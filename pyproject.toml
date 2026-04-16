@@ -1,0 +1,16 @@
+[project]
+name = "branchchatpoc"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "fastapi>=0.136.0",
+    "fastapi-swagger-dark>=0.0.9",
+    "google-genai>=1.73.1",
+    "motor>=3.7.1",
+    "pydantic>=2.13.1",
+    "pydantic-settings>=2.13.1",
+    "python-dotenv>=1.2.2",
+    "uvicorn>=0.44.0",
+]

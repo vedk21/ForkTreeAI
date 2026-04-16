@@ -1,0 +1,49 @@
+# ================================
+# Ruff Configuration File
+# ================================
+
+line-length = 100
+target-version = "py313"
+
+[lint]
+select = [
+    "E",      # pycodestyle errors
+    "W",      # pycodestyle warnings
+    "F",      # Pyflakes
+    "I",      # isort (import sorting)
+    "N",      # pep8-naming
+    "UP",     # pyupgrade
+    "B",      # flake8-bugbear
+    "A",      # flake8-builtins
+    "C4",     # flake8-comprehensions
+    "PIE",    # flake8-pie
+    "SIM",    # flake8-simplify
+]
+
+ignore = [
+    "E501",   # Line too long (formatter handles it)
+    "W292",   # No newline at end of file
+]
+
+exclude = [
+    ".git",
+    "__pycache__",
+    ".venv",
+    "venv",
+    ".pytest_cache",
+    ".mypy_cache",
+    "htmlcov",
+]
+
+[format]
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+
+[lint.per-file-ignores]
+"__init__.py" = ["F401", "F403"]
+
+[lint.isort]
+known-first-party = ["app"]
+# Ensures imports from the same app/ package stay grouped
+combine-as-imports = true
