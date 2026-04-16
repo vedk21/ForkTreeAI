@@ -1,8 +1,8 @@
-# BranchChat
+# ForkTreeAI
 
 **An AI chat app with branching conversations — explore multiple threads from any message, all inside a single window.**
 
-Unlike linear chat interfaces (ChatGPT, Gemini, Perplexity), BranchChat lets you **fork** the conversation at any point, creating a tree of related discussions. Switch between branches instantly without losing context.
+Unlike linear chat interfaces (ChatGPT, Gemini, Perplexity), ForkTreeAI lets you **fork** the conversation at any point, creating a tree of related discussions. Switch between branches instantly without losing context.
 
 ## ✨ Features
 
@@ -21,6 +21,8 @@ Unlike linear chat interfaces (ChatGPT, Gemini, Perplexity), BranchChat lets you
 ### Installation
 
 ```bash
-git clone https://github.com/yourusername/branchchat.git
-cd branchchat
-npm install   # or pip install -r requirements.txt
+Setup uv as python package manager
+git clone https://github.com/vedk21/ForkTreeAI.git
+cd ForkTreeAI
+uv sync
+```
