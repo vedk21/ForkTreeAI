@@ -10,6 +10,7 @@ class ConversationRequest(BaseModel):
 class MessageRequest(BaseModel):
     content: str
     parent_id: str | None = Field(default=None, description="ID of the parent message")
+    force_new_branch: bool = Field(default=False, description="Forces a fork even if no child exists")
     title: str | None = Field(default=None, description="Node title for the UI")
     metadata: dict = Field(default_factory=dict, description="Flexible key-value storage")
 
@@ -22,6 +23,8 @@ class MessageUpdate(BaseModel):
 
 class MessageResponse(BaseModel):
     id: str
+    conversation_id: str
+    branch_id: str
     parent_id: str | None
     role: str
     title: str | None

@@ -10,3 +10,4 @@ async def init_db():
     """Ensure indexes exist for performance."""
     await db.messages.create_index([("conversation_id", 1)])
     await db.messages.create_index([("parent_id", 1)])
+    await db.messages.create_index([("branch_id", 1)])

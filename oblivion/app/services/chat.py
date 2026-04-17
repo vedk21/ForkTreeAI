@@ -1,3 +1,5 @@
+import uuid
+import asyncio
 from datetime import UTC, datetime
 
 from bson import ObjectId
@@ -20,7 +22,6 @@ async def create_conversation(title: str) -> str:
 
     # Fetch the inserted document by its _id
     created_doc = await db.conversations.find_one({"_id": result.inserted_id})
-    print(created_doc)
     return created_doc
 
 
@@ -43,6 +44,27 @@ async def get_branch_path(leaf_message_id: str | None) -> list[dict]:
 
 
 async def process_new_message(conv_id: str, request: MessageRequest) -> dict:
+    # 1. Determine Branch ID
+    branch_id = None
+    if not request.parent_id:
+        # Root message
+        branch_id = str(uuid.uuid4())
+    else:
+        parent_msg = await db.messages.find_one({"_id": ObjectId(request.parent_id)})
+        if not parent_msg:
+            raise HTTPException(status_code=404, detail="Parent message not found")
+            
+        existing_child = await db.messages.find_one({
+            "parent_id": request.parent_id, 
+            "is_deleted": False
+        })
+        
+        if existing_child or request.force_new_branch:
+            branch_id = str(uuid.uuid4())
+        else:
+            branch_id = parent_msg.get("branch_id")
+
+    # 2. Rebuild Timeline for AI Context
     branch_messages = await get_branch_path(request.parent_id)
 
     # Exclude soft-deleted messages from the AI's context history
@@ -52,8 +74,10 @@ async def process_new_message(conv_id: str, request: MessageRequest) -> dict:
         if not m.get("is_deleted", False)
     ]
 
+    # 3. Save User Message
     user_msg = {
         "conversation_id": conv_id,
+        "branch_id": branch_id,
         "parent_id": request.parent_id,
         "role": "user",
         "title": request.title,
@@ -66,20 +90,46 @@ async def process_new_message(conv_id: str, request: MessageRequest) -> dict:
     user_result = await db.messages.insert_one(user_msg)
     user_msg_id = str(user_result.inserted_id)
 
+    # 4. Determine AI Response (Mock vs Live)
+    ai_content = ""
     try:
-        ai_content = await get_ai_response(history, request.content)
+        if settings.use_mock_ai:
+            # Simulate processing time for UI loading states
+            await asyncio.sleep(3)
+
+            # Try to grab an existing model response from the DB
+            mock_doc = await db.messages.find_one({"role": "model", "is_deleted": False})
+
+            if mock_doc:
+                ai_content = mock_doc["content"]
+            else:
+                # Fallback if DB has no model messages yet.
+                # Using Markdown to help test UI rendering (bolding, lists, code blocks).
+                ai_content = (
+                    f"**[MOCK MODE]** I received your message: *'{request.content}'*.\n\n"
+                    "Here is a mock response because `USE_MOCK_AI` is set to `true`.\n"
+                    "- List item 1\n"
+                    "- List item 2\n\n"
+                    "```python\nprint('Hello from Mock UI Test')\n```"
+                )
+        else:
+            # LIVE API CALL
+            ai_content = await get_ai_response(history, request.content)
+
     except Exception as e:
         await db.messages.delete_one({"_id": ObjectId(user_msg_id)})
         raise HTTPException(status_code=500, detail=f"AI Error: {str(e)}") from e
 
+    # 5. Save AI Message
     ai_msg = {
         "conversation_id": conv_id,
+        "branch_id": branch_id,
         "parent_id": user_msg_id,
         "role": "model",
         "title": None,
         "content": ai_content,
         "is_deleted": False,
-        "metadata": {"model_used": settings.ai_model_name},  # Example metadata usage
+        "metadata": {"model_used": settings.ai_model_name},
         "created_at": datetime.now(UTC),
         "updated_at": None,
     }
@@ -88,9 +138,22 @@ async def process_new_message(conv_id: str, request: MessageRequest) -> dict:
     ai_msg["id"] = str(ai_result.inserted_id)
     return ai_msg
 
+async def get_messages_by_branch(conv_id: str, branch_id: str) -> list[dict]:
+    cursor = db.messages.find({
+        "conversation_id": conv_id,
+        "branch_id": branch_id,
+        "is_deleted": False
+        }).sort("created_at", 1)
+    messages = await cursor.to_list(length=1000)
+    for m in messages:
+        m["id"] = str(m.pop("_id"))
+    return messages
 
 async def get_all_messages(conv_id: str) -> list[dict]:
-    cursor = db.messages.find({"conversation_id": conv_id}).sort("created_at", 1)
+    cursor = db.messages.find({
+        "conversation_id": conv_id,
+        "is_deleted": False
+        }).sort("created_at", 1)
     messages = await cursor.to_list(length=1000)
     for m in messages:
         m["id"] = str(m.pop("_id"))
@@ -117,7 +180,9 @@ async def update_message(msg_id: str, update_data: MessageUpdate) -> dict:
     update_fields["updated_at"] = datetime.now(UTC)
 
     result = await db.messages.find_one_and_update(
-        {"_id": ObjectId(msg_id)}, {"$set": update_fields}, return_document=True
+        {"_id": ObjectId(msg_id)},
+        {"$set": update_fields},
+        return_document=True
     )
 
     result["id"] = str(result.pop("_id"))
