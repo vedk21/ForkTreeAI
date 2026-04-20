@@ -1,0 +1,25 @@
+/* Main Tailwind CSS entry point for Vite + React Router v7. */
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@import "./styles/variables.css";
+@import "./styles/theme.css";
+@import "shadcn/tailwind.css";
+
+/* @layer base injects these rules into Tailwind’s base layer for global resets and default element styles; available layers are base, components, and utilities */
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+  html {
+    @apply font-sans;
+  }
+}
+
+/* Should be imported last in app.css to avoid overriding Tailwind defaults. */
+@import "./styles/global.css";
+/* Custom feature related css */
+@import "./styles/gradient.css";

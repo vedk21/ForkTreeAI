@@ -1,0 +1,351 @@
+/* CSS custom properties definitions for light and dark themes.
+   - Defines base design tokens under :root (colors, radius, etc.).
+   - Contains the .dark selector overrides to switch tokens in dark mode.
+*/
+
+:root {
+  --radius: 0.625rem;
+  --icon-size: 1.125rem;
+  --background: #C3C9D5;
+  --foreground: oklch(0.31 0.05 267.49);
+  --card: #BECADF;
+  --card-foreground: oklch(0.31 0.05 267.49);
+  --popover: #C0CADD;
+  --popover-foreground: oklch(0.31 0.05 267.49);
+  --sidebar: #C0CADD;
+  --sidebar-foreground: oklch(0.31 0.05 267.49);
+  --primary: #5A6DAD;
+  --primary-foreground: oklch(96% 0.01 270);
+  --secondary: #647FAF;
+  --secondary-foreground: oklch(96% 0.01 270);
+  --muted: #7C8AA4;
+  --muted-foreground: #3C4452;
+  --accent: #6F8FC4;
+  --accent-foreground: oklch(96% 0.01 270);
+  --destructive: oklch(0.55 0.14 25.98);
+  --border: oklch(0.34 0 17.29 / 0.12);
+  --input: #647FAF;
+  --ring: oklch(0.61 0.06 268.54);
+  --chart-1: #49588B;
+  --chart-2: #5A6DAD;
+  --chart-3: #677CC2;
+  --chart-4: #6E84CD;
+  --chart-5: #8298E2;
+  --chart-6: #879EEC;
+  --chart-7: #8DA5F5;
+  --sidebar-primary: #5A6DAD;
+  --sidebar-primary-foreground: oklch(96% 0.01 270);
+  --sidebar-accent: #6F8FC4;
+  --sidebar-accent-foreground: oklch(96% 0.01 270);
+  --sidebar-border: oklch(0.34 0 17.29 / 0.12);
+  --sidebar-ring: oklch(0.61 0.06 268.54);
+  --scrollbar-thumb: var(--primary);
+  --scrollbar-thumb-hover: var(--secondary);
+
+  /* Custom colors */
+    --money-bag-primary: #393769;
+    --money-bag-accent: #535182;
+    --rupee-sign: #9C76DA;
+}
+
+.light  {
+  --background: #C3C9D5;
+  --foreground: oklch(0.31 0.05 267.49);
+  --card: #BECADF;
+  --card-foreground: oklch(0.31 0.05 267.49);
+  --popover: #C0CADD;
+  --popover-foreground: oklch(0.31 0.05 267.49);
+  --sidebar: #C0CADD;
+  --sidebar-foreground: oklch(0.31 0.05 267.49);
+  --primary: #5A6DAD;
+  --primary-foreground: oklch(96% 0.01 270);
+  --secondary: #647FAF;
+  --secondary-foreground: oklch(96% 0.01 270);
+  --muted: #7C8AA4;
+  --muted-foreground: #3C4452;
+  --accent: #6F8FC4;
+  --accent-foreground: oklch(96% 0.01 270);
+  --destructive: oklch(0.55 0.14 25.98);
+  --border: oklch(0.34 0 17.29 / 0.12);
+  --input: #647FAF;
+  --ring: oklch(0.61 0.06 268.54);
+  --chart-1: #49588B;
+  --chart-2: #5A6DAD;
+  --chart-3: #677CC2;
+  --chart-4: #6E84CD;
+  --chart-5: #8298E2;
+  --chart-6: #879EEC;
+  --chart-7: #8DA5F5;
+  --sidebar-primary: #5A6DAD;
+  --sidebar-primary-foreground: oklch(96% 0.01 270);
+  --sidebar-accent: #6F8FC4;
+  --sidebar-accent-foreground: oklch(96% 0.01 270);
+  --sidebar-border: oklch(0.34 0 17.29 / 0.12);
+  --sidebar-ring: oklch(0.61 0.06 268.54);
+  --scrollbar-thumb: var(--primary);
+  --scrollbar-thumb-hover: var(--secondary);
+
+  /* Custom colors */
+    --money-bag-primary: #393769;
+    --money-bag-accent: #535182;
+    --rupee-sign: #9C76DA;
+}
+
+.dark {
+    --background: #121417;
+    --foreground: oklch(99.11% 0.000 0);
+    --card: #21262E;
+    --card-foreground: oklch(99.11% 0.000 0);
+    --popover: #191D23;
+    --popover-foreground: oklch(99.11% 0.000 0);
+    --primary: #9E96F4;
+    --primary-foreground: #2B1C49;
+    --secondary: #BDBBF0;
+    --secondary-foreground: #2B1C49;
+    --muted: #7C98BA;
+    --muted-foreground: #E6E5E5;
+    --accent: #74ACEF;
+    --accent-foreground: oklch(0.49 0.06 224.66);
+    --destructive: oklch(0.53 0.12 23.8);
+    --border: oklch(1 0 0 / 10%);
+    --input: #BDBBF0;
+    --ring: oklch(0.48 0.06 313.83);
+    --chart-1: #6F5AB2;
+    --chart-2: #7B68C8;
+    --chart-3: #8D79DE;
+    --chart-4: #9C87E8;
+    --chart-5: #A68FE5;
+    --chart-6: #C7B9FD;
+    --chart-7: #B4A1F0;
+    --sidebar: #191D23;
+    --sidebar-foreground: oklch(99.11% 0.000 0);
+    --sidebar-primary: #9E96F4;
+    --sidebar-primary-foreground: #2B1C49;
+    --sidebar-accent: #74ACEF;
+    --sidebar-accent-foreground: oklch(0.49 0.06 224.66);
+    --sidebar-border: oklch(1 0 0 / 10%);
+    --sidebar-ring: oklch(0.48 0.06 313.83);
+    --scrollbar-thumb: var(--primary);
+    --scrollbar-thumb-hover: var(--secondary);
+
+    /* Custom colors */
+    --money-bag-primary: #403A83;
+    --money-bag-accent: #5E58A7;
+    --rupee-sign: #CE47FF;
+}
+
+.nebula {
+    --background: oklch(0.2 0.04 291.68);
+    --foreground: oklch(99.11% 0.000 0);
+    --card: oklch(0.26 0.06 294.51);
+    --card-foreground: oklch(99.11% 0.000 0);
+    --popover: oklch(0.26 0.06 294.51);
+    --popover-foreground: oklch(99.11% 0.000 0);
+    --primary: oklch(0.52 0.22 290.91);
+    --primary-foreground: oklch(99.11% 0.000 0);
+    --secondary: oklch(0.63 0.21 298.5);
+    --secondary-foreground: oklch(99.11% 0.000 0);
+    --muted: oklch(0.47 0.08 298.52);
+    --muted-foreground: oklch(0.72 0 17.21);
+    --accent: oklch(0.5 0.21 284.16);
+    --accent-foreground: oklch(99.11% 0.000 0);
+    --destructive: oklch(0.53 0.12 23.8);
+    --border: oklch(1 0 0 / 10%);
+    --input: oklch(0.52 0.22 290.91);
+    --ring: oklch(0.52 0.22 290.91);
+    --chart-1: #6F5AB2;
+    --chart-2: #7B68C8;
+    --chart-3: #8D79DE;
+    --chart-4: #9C87E8;
+    --chart-5: #A68FE5;
+    --chart-6: #C7B9FD;
+    --chart-7: #B4A1F0;
+    --sidebar: oklch(0.24 0.05 295.39);
+    --sidebar-foreground: oklch(99.11% 0.000 0);
+    --sidebar-primary: oklch(0.52 0.22 290.91);
+    --sidebar-primary-foreground: oklch(99.11% 0.000 0);
+    --sidebar-accent: oklch(0.74 0.14 228.58);
+    --sidebar-accent-foreground: oklch(99.11% 0.000 0);
+    --sidebar-border: oklch(1 0 0 / 10%);
+    --sidebar-ring: oklch(0.556 0 0);
+
+    /* Custom colors */
+    --money-bag-primary: #6236B3;
+    --money-bag-accent: #7B5BDB;
+    --rupee-sign: #D63CE1;
+}
+
+.caribbean {
+    --background: #161F35;
+    --foreground: #FCFCFC;
+    --card: #1B2439;
+    --card-foreground: #FCFCFC;
+    --popover: #1B2439;
+    --popover-foreground: #FCFCFC;
+    --primary: #02868A;
+    --primary-foreground: #FCFCFC;
+    --secondary: #039398;
+    --secondary-foreground: #FCFCFC;
+    --muted: #38575C;
+    --muted-foreground: #CACBCC;
+    --accent: #02B6D2;
+    --accent-foreground: #FCFCFC;
+    --destructive: oklch(0.53 0.12 23.8);
+    --border: oklch(1 0 0 / 10%);
+    --input: #09758B;
+    --ring: #0476A7;
+    --chart-1: #03778E;
+    --chart-2: #0392AF;
+    --chart-3: #02AFD1;
+    --chart-4: #02C1E8;
+    --chart-5: #22BFC8;
+    --chart-6: #20CFD8;
+    --chart-7: #29EEF8;
+    --sidebar: #1B2439;
+    --sidebar-foreground: #FCFCFC;
+    --sidebar-primary: #02868A;
+    --sidebar-primary-foreground: #FCFCFC;
+    --sidebar-accent: #02B6D2;
+    --sidebar-accent-foreground: #FCFCFC;
+    --sidebar-border: oklch(1 0 0 / 10%);
+    --sidebar-ring: oklch(0.556 0 0);
+
+    /* Custom colors */
+    --money-bag-primary: #03758B;
+    --money-bag-accent: #129DB9;
+    --rupee-sign: #09202F;
+}
+
+.wilderness {
+    --background: #101915;
+    --foreground: oklch(99.11% 0.000 0);
+    --card: #1E2C28;
+    --card-foreground: oklch(99.11% 0.000 0);
+    --popover: #1E2C28;
+    --popover-foreground: oklch(99.11% 0.000 0);
+    --primary: #255c32;
+    --primary-foreground: oklch(99.11% 0.000 0);
+    --secondary: #556f44;
+    --secondary-foreground: oklch(99.11% 0.000 0);
+    --muted: oklch(0.38 0 0);
+    --muted-foreground: oklch(0.72 0 17.21);
+    --accent: #3a7865;
+    --accent-foreground: oklch(99.11% 0.000 0);
+    --destructive: oklch(0.53 0.12 23.8);
+    --border: oklch(1 0 0 / 10%);
+    --input: #556f44;
+    --ring: #303d00;
+    --chart-1: #37694F;
+    --chart-2: #3A7858;
+    --chart-3: #37885E;
+    --chart-4: #349261;
+    --chart-5: #319F66;
+    --chart-6: #2DAE6B;
+    --chart-7: #23C06F;
+    --sidebar: #192421;
+    --sidebar-foreground: oklch(99.11% 0.000 0);
+    --sidebar-primary: #255c32;
+    --sidebar-primary-foreground: oklch(99.11% 0.000 0);
+    --sidebar-accent: #3a7865;
+    --sidebar-accent-foreground: oklch(99.11% 0.000 0);
+    --sidebar-border: oklch(1 0 0 / 10%);
+    --sidebar-ring: oklch(0.556 0 0);
+
+    /* Custom colors */
+    --money-bag-primary: #0D9345;
+    --money-bag-accent: #1BBF6D;
+    --rupee-sign: #FFB347;
+}
+
+.blue2 {
+    --background: #292966;
+    --foreground: #FCFCFC;
+    --card: #202050;
+    --card-foreground: #FCFCFC;
+    --popover: #202050;
+    --popover-foreground: #FCFCFC;
+    --primary: #5C5C99;
+    --primary-foreground: #FCFCFC;
+    --secondary: #A3A3CC;
+    --secondary-foreground: #FCFCFC;
+    --muted: oklch(0.38 0 0);
+    --muted-foreground: oklch(0.72 0 17.21);
+    --accent: #CCCCFF;
+    --accent-foreground: #FCFCFC;
+    --destructive: oklch(0.53 0.12 23.8);
+    --border: oklch(1 0 0 / 10%);
+    --input: #A3A3CC;
+    --ring: #546797;
+    --chart-7: #BAABF8;
+    --chart-6: #B19FF9;
+    --chart-5: #A38EF8;
+    --chart-4: #9880F6;
+    --chart-3: #8C75EA;
+    --chart-2: #856BEE;
+    --chart-1: #7A5EEC;
+    --sidebar: #202050;
+    --sidebar-foreground: #FCFCFC;
+    --sidebar-primary: #5C5C99;
+    --sidebar-primary-foreground: #FCFCFC;
+    --sidebar-accent: #CCCCFF;
+    --sidebar-accent-foreground: #FCFCFC;
+    --sidebar-border: oklch(1 0 0 / 10%);
+    --sidebar-ring: oklch(0.556 0 0);
+
+    /* Custom colors */
+    --money-bag-primary: #6149DC;
+    --money-bag-accent: #7E69EA;
+    --rupee-sign: #09202F;
+}
+
+.vibrant {
+    --background: #030712;
+    --foreground: #FCFCFC;
+    --card: #111827;
+    --card-foreground: #FCFCFC;
+    --popover: #111827;
+    --popover-foreground: #FCFCFC;
+    --primary: #054BBC;
+    --primary-foreground: #FCFCFC;
+    --secondary: #23569D;
+    --secondary-foreground: #FCFCFC;
+    --muted: #404752;
+    --muted-foreground: #FCFCFC;
+    --accent: #0EA5E9;
+    --accent-foreground: #FCFCFC;
+    --destructive: #EC4899;
+    --border: oklch(1 0 0 / 10%);
+    --input: #23569D;
+    --ring: #23569D;
+    --chart-1: #1A4A7A;
+    --chart-2: #26518E;
+    --chart-3: #1E5EC4;
+    --chart-4: #2D6BD4;
+    --chart-5: #3D7AE4;
+    --chart-6: #0EA5E9;
+    --chart-7: #2BB4ED;
+    --sidebar: #111827;
+    --sidebar-foreground: #FCFCFC;
+    --sidebar-primary: #054BBC;
+    --sidebar-primary-foreground: #FCFCFC;
+    --sidebar-accent: #0EA5E9;
+    --sidebar-accent-foreground: #FCFCFC;
+    --sidebar-border: oklch(1 0 0 / 10%);
+    --sidebar-ring: oklch(0.556 0 0);
+
+    /* Custom colors */
+    --money-bag-primary: #143973;
+    --money-bag-accent: #3E75CE;
+    --rupee-sign: #76CCDA;
+}
+
+/* responsive overrides */
+@media (min-width: 768px) {
+  :root { --icon-size: 1.25rem; } /* md */
+}
+@media (min-width: 1360px) {
+  :root { --icon-size: 1.3rem; } /* xl */
+}
+@media (min-width: 1920px) {
+  :root { --icon-size: 1.5rem; } /* 2xl */
+}

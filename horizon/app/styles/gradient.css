@@ -1,0 +1,21 @@
+/* Custom styles for the application */
+
+.custom-gradient-main-page {
+  background: linear-gradient(
+    90deg,
+    var(--color-background) 0%, 
+    var(--color-sidebar) 70%, 
+    var(--color-background) 100%
+  );
+}
+
+.custom-gradient-navbar {
+  background: linear-gradient(
+    90deg,
+    var(--color-background) 0%,
+    var(--color-sidebar) 60%,
+    var(--color-background) 80%,
+    var(--color-background) 100%
+  );
+}
+
