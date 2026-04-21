@@ -25,24 +25,6 @@ async def create_conversation(title: str) -> str:
     return created_doc
 
 
-async def get_branch_path(leaf_message_id: str | None) -> list[dict]:
-    if not leaf_message_id:
-        return []
-
-    chain = []
-    current_id = leaf_message_id
-
-    while current_id:
-        msg = await db.messages.find_one({"_id": ObjectId(current_id)})
-        if not msg:
-            break
-        msg["id"] = str(msg.pop("_id"))
-        chain.insert(0, msg)
-        current_id = msg.get("parent_id")
-
-    return chain
-
-
 async def process_new_message(conv_id: str, request: MessageRequest) -> dict:
     """Orchestrates the flow of saving messages, fetching AI context, and updating branches."""
     
@@ -52,7 +34,6 @@ async def process_new_message(conv_id: str, request: MessageRequest) -> dict:
         parent_id=request.parent_id,
         role="user",
         content=request.content,
-        title=request.title,
         metadata=request.metadata
     )
 
@@ -78,18 +59,6 @@ async def process_new_message(conv_id: str, request: MessageRequest) -> dict:
     # Clean up the raw MongoDB _id before returning the Pydantic-compatible dict
     ai_msg_doc.pop("_id", None)
     return ai_msg_doc
-
-
-async def get_messages_for_branch(conv_id: str, branch_id: str) -> list[dict]:
-    # 1. Find the pointer
-    branch = await db.branches.find_one({"_id": ObjectId(branch_id), "conversation_id": conv_id})
-    if not branch:
-        return []
-        
-    head_id = branch["head_message_id"]
-    
-    # 2. Traverse bottom-up (This is the existing get_branch_path function)
-    return await get_branch_path(head_id)
 
 
 async def get_all_messages(conv_id: str) -> list[dict]:
@@ -156,3 +125,103 @@ async def delete_message(msg_id: str) -> dict:
 
     result["id"] = str(result.pop("_id"))
     return result
+
+async def get_tree_view() -> list[dict]:
+    """Builds the nested JSON hierarchy of all conversations and branches."""
+    # 1. Use MongoDB Aggregation to fetch only valid branches
+    pipeline = [
+        {
+            # Cross-reference the messages collection
+            "$lookup": {
+                "from": "messages",
+                "let": { "head_id": { "$toObjectId": "$head_message_id" } },
+                "pipeline": [
+                    { "$match": { "$expr": { "$eq": ["$_id", "$$head_id"] } } }
+                ],
+                "as": "head_message_data"
+            }
+        },
+        {
+            # Flatten the joined array into a single object
+            "$unwind": {
+                "path": "$head_message_data",
+                "preserveNullAndEmptyArrays": False # Drops the branch entirely if the head message is physically missing
+            }
+        },
+        {
+            # THE FIX: Filter out branches where the head message is soft-deleted
+            "$match": {
+                "head_message_data.is_deleted": False
+            }
+        },
+        {
+            "$sort": { "created_at": 1 }
+        }
+    ]
+
+    cursor = db.branches.aggregate(pipeline)
+    branches = await cursor.to_list(length=5000)
+
+    branch_map = {}
+    root_branches = []
+
+    # 2. Format every valid branch into the JSON structure
+    for b in branches:
+        b_id = str(b["_id"])
+        created_at_val = b.get("created_at")
+        
+        branch_map[b_id] = {
+            "id": b_id, 
+            "conversation_id": b.get("conversation_id"),
+            "name_of_branch": b.get("name"),
+            "branch_id": b_id,
+            "created_at": created_at_val.isoformat() if hasattr(created_at_val, 'isoformat') else created_at_val,
+            "updated_at": b.get("updated_at"),
+            "children": []
+        }
+
+    # 3. Connect the children to their parents
+    for b in branches:
+        b_id = str(b["_id"])
+        parent_id = b.get("parent_branch_id")
+        
+        if parent_id:
+            # Only attach if the parent wasn't filtered out by the deletion check!
+            if parent_id in branch_map:
+                branch_map[parent_id]["children"].append(branch_map[b_id])
+            
+            # NOTE: If parent_id is NOT in branch_map, it means the parent branch was deleted.
+            # By doing nothing here, we automatically "hide" all children of a deleted parent.
+        else:
+            # If it has no parent, it's the root of a conversation
+            root_branches.append(branch_map[b_id])
+
+    return root_branches
+
+
+async def get_messages_for_branch(conv_id: str, branch_id: str) -> list[dict]:
+    """Returns ONLY the messages unique to this branch (stops at the fork point)."""
+    branch = await db.branches.find_one({"_id": ObjectId(branch_id), "conversation_id": conv_id})
+    if not branch:
+        return []
+        
+    head_id = branch["head_message_id"]
+    fork_id = branch.get("fork_message_id") # This is where we need to stop
+    
+    chain = []
+    current_id = head_id
+
+    # Traverse bottom-up, but STOP when we hit the fork point
+    while current_id:
+        if fork_id and current_id == fork_id:
+            break
+            
+        msg = await db.messages.find_one({"_id": ObjectId(current_id)})
+        if not msg:
+            break
+            
+        msg["id"] = str(msg.pop("_id"))
+        chain.insert(0, msg)
+        current_id = msg.get("parent_id")
+
+    return chain
