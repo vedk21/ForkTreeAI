@@ -8,7 +8,7 @@ from fastapi import HTTPException
 from app.core.config import settings
 from app.core.database import db
 from app.models.chat import MessageRequest, MessageUpdate
-from app.services.gemini import get_ai_response
+from app.services.message import _generate_ai_content, _save_message, _update_branch_pointers
 
 
 async def create_conversation(title: str) -> str:
@@ -44,108 +44,52 @@ async def get_branch_path(leaf_message_id: str | None) -> list[dict]:
 
 
 async def process_new_message(conv_id: str, request: MessageRequest) -> dict:
-    # 1. Determine Branch ID
-    branch_id = None
-    if not request.parent_id:
-        # Root message
-        branch_id = str(uuid.uuid4())
-    else:
-        parent_msg = await db.messages.find_one({"_id": ObjectId(request.parent_id)})
-        if not parent_msg:
-            raise HTTPException(status_code=404, detail="Parent message not found")
+    """Orchestrates the flow of saving messages, fetching AI context, and updating branches."""
+    
+    # 1. Save User Message
+    user_msg_id, _ = await _save_message(
+        conv_id=conv_id,
+        parent_id=request.parent_id,
+        role="user",
+        content=request.content,
+        title=request.title,
+        metadata=request.metadata
+    )
 
-        existing_child = await db.messages.find_one(
-            {"parent_id": request.parent_id, "is_deleted": False}
-        )
+    # 2. Generate AI Content
+    ai_content = await _generate_ai_content(
+        parent_id=request.parent_id,
+        user_content=request.content,
+        user_msg_id=user_msg_id
+    )
 
-        if existing_child or request.force_new_branch:
-            branch_id = str(uuid.uuid4())
-        else:
-            branch_id = parent_msg.get("branch_id")
+    # 3. Save AI Message
+    ai_msg_id, ai_msg_doc = await _save_message(
+        conv_id=conv_id,
+        parent_id=user_msg_id,
+        role="model",
+        content=ai_content,
+        metadata={"model_used": "mocked-data" if settings.use_mock_ai else settings.ai_model_name}
+    )
 
-    # 2. Rebuild Timeline for AI Context
-    branch_messages = await get_branch_path(request.parent_id)
+    # 4. Handle Branch Pointers
+    await _update_branch_pointers(conv_id, request, ai_msg_id)
 
-    # Exclude soft-deleted messages from the AI's context history
-    history = [
-        {"role": m["role"], "parts": [m["content"]]}
-        for m in branch_messages
-        if not m.get("is_deleted", False)
-    ]
-
-    # 3. Save User Message
-    user_msg = {
-        "conversation_id": conv_id,
-        "branch_id": branch_id,
-        "parent_id": request.parent_id,
-        "role": "user",
-        "title": request.title,
-        "content": request.content,
-        "is_deleted": False,
-        "metadata": request.metadata,
-        "created_at": datetime.now(UTC),
-        "updated_at": None,
-    }
-    user_result = await db.messages.insert_one(user_msg)
-    user_msg_id = str(user_result.inserted_id)
-
-    # 4. Determine AI Response (Mock vs Live)
-    ai_content = ""
-    try:
-        if settings.use_mock_ai:
-            # Simulate processing time for UI loading states
-            await asyncio.sleep(3)
-
-            # Try to grab an existing model response from the DB
-            mock_doc = await db.messages.find_one({"role": "model", "is_deleted": False})
-
-            if mock_doc:
-                ai_content = mock_doc["content"]
-            else:
-                # Fallback if DB has no model messages yet.
-                # Using Markdown to help test UI rendering (bolding, lists, code blocks).
-                ai_content = (
-                    f"**[MOCK MODE]** I received your message: *'{request.content}'*.\n\n"
-                    "Here is a mock response because `USE_MOCK_AI` is set to `true`.\n"
-                    "- List item 1\n"
-                    "- List item 2\n\n"
-                    "```python\nprint('Hello from Mock UI Test')\n```"
-                )
-        else:
-            # LIVE API CALL
-            ai_content = await get_ai_response(history, request.content)
-
-    except Exception as e:
-        await db.messages.delete_one({"_id": ObjectId(user_msg_id)})
-        raise HTTPException(status_code=500, detail=f"AI Error: {str(e)}") from e
-
-    # 5. Save AI Message
-    ai_msg = {
-        "conversation_id": conv_id,
-        "branch_id": branch_id,
-        "parent_id": user_msg_id,
-        "role": "model",
-        "title": None,
-        "content": ai_content,
-        "is_deleted": False,
-        "metadata": {"model_used": settings.ai_model_name},
-        "created_at": datetime.now(UTC),
-        "updated_at": None,
-    }
-    ai_result = await db.messages.insert_one(ai_msg)
-
-    ai_msg["id"] = str(ai_result.inserted_id)
-    return ai_msg
+    # Clean up the raw MongoDB _id before returning the Pydantic-compatible dict
+    ai_msg_doc.pop("_id", None)
+    return ai_msg_doc
 
 
-async def get_messages_by_branch(conv_id: str, branch_id: str) -> list[dict]:
-    cursor = db.messages.find(
-        {"conversation_id": conv_id, "branch_id": branch_id, "is_deleted": False}
-    ).sort("created_at", 1)
-    messages = await cursor.to_list(length=1000)
-    for m in messages:
-        m["id"] = str(m.pop("_id"))
-    return messages
+async def get_messages_for_branch(conv_id: str, branch_id: str) -> list[dict]:
+    # 1. Find the pointer
+    branch = await db.branches.find_one({"_id": ObjectId(branch_id), "conversation_id": conv_id})
+    if not branch:
+        return []
+        
+    head_id = branch["head_message_id"]
+    
+    # 2. Traverse bottom-up (This is the existing get_branch_path function)
+    return await get_branch_path(head_id)
 
 
 async def get_all_messages(conv_id: str) -> list[dict]:

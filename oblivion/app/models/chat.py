@@ -10,6 +10,8 @@ class ConversationRequest(BaseModel):
 class MessageRequest(BaseModel):
     content: str
     parent_id: str | None = Field(default=None, description="ID of the parent message")
+    current_branch_id: str | None = Field(default=None, description="The ID of the branch the user is currently viewing")
+    og_trail_branch_name: str | None = Field(default=None, description="The name of the branch the user is currently creating")
     force_new_branch: bool = Field(default=False, description="Forces a fork even if no child exists")
     title: str | None = Field(default=None, description="Node title for the UI")
     metadata: dict = Field(default_factory=dict, description="Flexible key-value storage")
@@ -24,7 +26,6 @@ class MessageUpdate(BaseModel):
 class MessageResponse(BaseModel):
     id: str
     conversation_id: str
-    branch_id: str
     parent_id: str | None
     role: str
     title: str | None
@@ -33,3 +34,8 @@ class MessageResponse(BaseModel):
     metadata: dict
     created_at: datetime
     updated_at: datetime | None
+
+class BranchResponse(BaseModel):
+    id: str
+    name: str
+    head_message_id: str

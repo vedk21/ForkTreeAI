@@ -29,7 +29,7 @@ async def get_all_messages(conv_id: str):
 
 @router.get("/{conv_id}/branch-messages/{branch_id}", response_model=list[MessageResponse])
 async def get_branch_messages(conv_id: str, branch_id: str):
-    return await chat_service.get_messages_by_branch(conv_id, branch_id)
+    return await chat_service.get_messages_for_branch(conv_id, branch_id)
 
 
 @router.get("/{conv_id}/branches/{leaf_id}", response_model=list[MessageResponse])
