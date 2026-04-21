@@ -13,84 +13,39 @@ import {
 	TooltipProvider,
 	TooltipTrigger
 } from '@/components/ui/tooltip';
-import { type TreeDataItem, TreeView } from '@/components/ui/tree-view';
+import { TreeView } from '@/components/ui/tree-view';
+import { chatData } from '@/data/raw_chats';
+import { type ChatTreeItem } from '@/lib/chat/helper';
 import { cn } from '@/lib/utils';
 
-interface ChatTreeItem extends TreeDataItem {
-	time?: string;
-	children?: ChatTreeItem[];
+import { ThemeToggle } from '../common/theme-toggle';
+
+interface ChatHistoryListProps {
+	selectedId: string;
+	onSelect: (id: string) => void;
 }
 
-// FIX 1: Replaced hardcoded "..." with full-length strings.
-// CSS `truncate` will now handle the ellipsis naturally based on container width.
-const chatData: ChatTreeItem[] = [
-	{
-		id: 'api-auth',
-		name: 'API authentication implementation details',
-		time: '2h',
-		children: [
-			{
-				id: 'branch-jwt',
-				name: 'Branch: JWT implementation guide',
-				time: '1h'
-			},
-			{
-				id: 'branch-oauth',
-				name: 'Branch: OAuth 2.0 flow setup',
-				time: '10m',
-				children: [
-					{
-						id: 'branch-oauth-v2',
-						name: 'Branch: OAuth 2.0 implementation guide',
-						time: '1m'
-					}
-				]
-			}
-		]
-	},
-	{
-		id: 'market-research',
-		name: 'Market research: Q4 2026 Analysis',
-		time: '1d'
-	},
-	{
-		id: 'blog-post',
-		name: 'Blog post: 5 productivity tips',
-		time: '3d',
-		children: [
-			{
-				id: 'branch-casual',
-				name: 'Branch: Casual tone version',
-				time: '2d'
-			},
-			{
-				id: 'branch-pro',
-				name: 'Branch: Professional tone version',
-				time: '1d'
-			}
-		]
-	}
-];
-
-export const ChatHistoryList = () => {
+export const ChatHistoryList = ({
+	selectedId,
+	onSelect
+}: ChatHistoryListProps) => {
 	return (
-		// FIX 2: Wrap the component in TooltipProvider. delayDuration sets how fast it appears.
 		<TooltipProvider delayDuration={400}>
 			<Sidebar className="border-r border-border bg-sidebar">
 				<SidebarHeader className="p-0 gap-0 bg-sidebar">
-					{/* SEAMLESS LOGO HEADER */}
-					<div className="flex items-center gap-3 px-4 h-[73px] border-b border-border shrink-0">
-						<div className="h-8 w-8 rounded-lg bg-primary text-primary-foreground flex items-center justify-center shrink-0 shadow-sm">
-							<Webhook className="h-5 w-5" />
+					<div className="flex items-center justify-between gap-3 px-4 h-18.25 border-b border-border shrink-0">
+						<div className="flex items-center gap-3">
+							<div className="h-8 w-8 rounded-lg bg-primary text-primary-foreground flex items-center justify-center shrink-0 shadow-sm">
+								<Webhook className="h-5 w-5" />
+							</div>
+							<span className="font-semibold text-lg tracking-tight text-sidebar-foreground truncate">
+								ForkTreeAI
+							</span>
 						</div>
-						<span className="font-semibold text-lg tracking-tight text-sidebar-foreground truncate">
-							ForkTreeAI
-						</span>
+						<ThemeToggle />
 					</div>
 
-					{/* ACTIONS & SEARCH AREA */}
-					<div className="p-4 pb-2">
-						{/* Title & New Chat Action */}
+					<div className="px-3 pt-4">
 						<div className="flex items-center justify-between mb-3">
 							<h2 className="text-sm font-bold text-sidebar-foreground/50 uppercase tracking-widest">
 								Conversations(3)
@@ -103,9 +58,7 @@ export const ChatHistoryList = () => {
 								<Plus className="h-4 w-4" />
 							</Button>
 						</div>
-
-						{/* Search */}
-						<div className="relative mb-0">
+						<div className="relative mb-2">
 							<Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
 							<Input
 								placeholder="Search conversations..."
@@ -115,21 +68,24 @@ export const ChatHistoryList = () => {
 					</div>
 				</SidebarHeader>
 
-				{/* Tree List Area */}
 				<SidebarContent className="px-2 bg-sidebar hide-scrollbar pb-2">
 					<div className="w-full grow overflow-hidden">
 						<TreeView
 							data={chatData}
-							initialSelectedItemId="market-research"
+							initialSelectedItemId={selectedId}
 							expandAll={false}
 							className="w-full"
+							// FIX 1: Listen to the tree's internal selection change and pass it to layout
+							onSelectChange={(item) => {
+								if (item) onSelect(item.id);
+							}}
 							renderItem={({
 								item,
 								level,
 								isSelected,
 								hasChildren,
 								onToggle,
-								onSelect
+								onSelect: treeOnSelect // FIX 2: Rename this so it doesn't clash with outer onSelect
 							}) => {
 								const chatItem = item as ChatTreeItem;
 								const branchCount = chatItem.children?.length || 0;
@@ -141,13 +97,11 @@ export const ChatHistoryList = () => {
 											isSelected ? 'bg-primary/25' : 'hover:bg-muted/50'
 										)}
 									>
-										{/* THE BEAUTIFUL ACTIVE INDICATOR (Vertical Bar) */}
 										{isSelected && (
 											<div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-[60%] bg-primary rounded-r-full shadow-[0_0_8px_rgba(var(--color-primary),0.4)]" />
 										)}
 
 										<div className="flex items-center gap-1.5 overflow-hidden text-left flex-1 pl-1">
-											{/* SEPARATED CLICK: The Icon area triggers the Accordion Expand/Collapse */}
 											<div
 												onClick={(e) => {
 													e.stopPropagation();
@@ -179,16 +133,16 @@ export const ChatHistoryList = () => {
 												)}
 											</div>
 
-											{/* FIX 3: Wrapped the text span in a Shadcn Tooltip */}
 											<Tooltip>
 												<TooltipTrigger asChild>
 													<span
 														onClick={(e) => {
 															e.stopPropagation();
-															if (onSelect) onSelect();
+															// FIX 3: Call the internal tree function to trigger visual state update
+															if (treeOnSelect) treeOnSelect();
 														}}
 														className={cn(
-															'truncate text-[0.9rem] font-medium leading-none cursor-pointer w-full py-1 transition-colors',
+															'truncate text-[1rem] font-medium leading-none cursor-pointer w-full py-1 transition-colors',
 															isSelected
 																? 'text-primary-foreground'
 																: 'text-foreground group-hover:text-foreground'
@@ -197,8 +151,6 @@ export const ChatHistoryList = () => {
 														{chatItem.name}
 													</span>
 												</TooltipTrigger>
-
-												{/* The tooltip pops up with the full un-truncated string */}
 												<TooltipContent
 													side="right"
 													sideOffset={10}
@@ -209,9 +161,7 @@ export const ChatHistoryList = () => {
 											</Tooltip>
 										</div>
 
-										{/* TIGHTENED LAYOUT: Badges & Time Container */}
 										<div className="flex items-center gap-1.5 shrink-0 ml-1.5">
-											{/* Branch Count Pill */}
 											{branchCount > 0 && (
 												<span
 													className={cn(
@@ -224,8 +174,6 @@ export const ChatHistoryList = () => {
 													{branchCount}
 												</span>
 											)}
-
-											{/* Time Stamp */}
 											{chatItem.time && (
 												<span
 													className={cn(

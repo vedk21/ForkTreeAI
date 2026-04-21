@@ -1,5 +1,5 @@
-import uuid
 import asyncio
+import uuid
 from datetime import UTC, datetime
 
 from bson import ObjectId
@@ -53,12 +53,11 @@ async def process_new_message(conv_id: str, request: MessageRequest) -> dict:
         parent_msg = await db.messages.find_one({"_id": ObjectId(request.parent_id)})
         if not parent_msg:
             raise HTTPException(status_code=404, detail="Parent message not found")
-            
-        existing_child = await db.messages.find_one({
-            "parent_id": request.parent_id, 
-            "is_deleted": False
-        })
-        
+
+        existing_child = await db.messages.find_one(
+            {"parent_id": request.parent_id, "is_deleted": False}
+        )
+
         if existing_child or request.force_new_branch:
             branch_id = str(uuid.uuid4())
         else:
@@ -138,22 +137,21 @@ async def process_new_message(conv_id: str, request: MessageRequest) -> dict:
     ai_msg["id"] = str(ai_result.inserted_id)
     return ai_msg
 
+
 async def get_messages_by_branch(conv_id: str, branch_id: str) -> list[dict]:
-    cursor = db.messages.find({
-        "conversation_id": conv_id,
-        "branch_id": branch_id,
-        "is_deleted": False
-        }).sort("created_at", 1)
+    cursor = db.messages.find(
+        {"conversation_id": conv_id, "branch_id": branch_id, "is_deleted": False}
+    ).sort("created_at", 1)
     messages = await cursor.to_list(length=1000)
     for m in messages:
         m["id"] = str(m.pop("_id"))
     return messages
 
+
 async def get_all_messages(conv_id: str) -> list[dict]:
-    cursor = db.messages.find({
-        "conversation_id": conv_id,
-        "is_deleted": False
-        }).sort("created_at", 1)
+    cursor = db.messages.find({"conversation_id": conv_id, "is_deleted": False}).sort(
+        "created_at", 1
+    )
     messages = await cursor.to_list(length=1000)
     for m in messages:
         m["id"] = str(m.pop("_id"))
@@ -180,9 +178,7 @@ async def update_message(msg_id: str, update_data: MessageUpdate) -> dict:
     update_fields["updated_at"] = datetime.now(UTC)
 
     result = await db.messages.find_one_and_update(
-        {"_id": ObjectId(msg_id)},
-        {"$set": update_fields},
-        return_document=True
+        {"_id": ObjectId(msg_id)}, {"$set": update_fields}, return_document=True
     )
 
     result["id"] = str(result.pop("_id"))

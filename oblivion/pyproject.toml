@@ -9,6 +9,7 @@ dependencies = [
     "fastapi-swagger-dark>=0.0.9",
     "google-genai>=1.73.1",
     "motor>=3.7.1",
+    "mypy>=1.20.1",
     "pydantic>=2.13.1",
     "pydantic-settings>=2.13.1",
     "python-dotenv>=1.2.2",
