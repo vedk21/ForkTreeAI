@@ -1,6 +1,7 @@
 /* Main Tailwind CSS entry point for Vite + React Router v7. */
 @import "tailwindcss";
 @import "tw-animate-css";
+@plugin "@tailwindcss/typography";
 
 @import "./styles/variables.css";
 @import "./styles/theme.css";
