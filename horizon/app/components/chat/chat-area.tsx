@@ -1,8 +1,17 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
+/* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable prefer-arrow/prefer-arrow-functions */
 import { Bot, Info, Mic, Paperclip, Search, Send } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 // 1. Import Syntax Highlighter and the VS Code Dark theme
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
-import { nord } from 'react-syntax-highlighter/dist/esm/styles/prism';
+import {
+	darcula,
+	nightOwl,
+	nord,
+	okaidia,
+	twilight
+} from 'react-syntax-highlighter/dist/esm/styles/prism';
 import remarkGfm from 'remark-gfm';
 
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
@@ -44,7 +53,7 @@ export const ChatArea = ({
 			className={`flex flex-col h-full w-full relative ${isParent ? 'bg-muted/10' : 'bg-background'}`}
 		>
 			{/* Top Header */}
-			<header className="flex items-center justify-between px-6 h-[73px] border-b border-border bg-background shrink-0 min-w-0">
+			<header className="flex items-center justify-between px-6 h-18.25 border-b border-border bg-background shrink-0 min-w-0">
 				<div className="flex items-center gap-2 min-w-0 flex-1 pr-4">
 					<SidebarTrigger
 						className={`sm:hidden ${isFirstWindow ? 'md:flex' : 'md:hidden'} justify-center items-center h-10 w-10`}
@@ -132,31 +141,50 @@ export const ChatArea = ({
 									>
 										<ReactMarkdown
 											remarkPlugins={[remarkGfm]}
-											// 2. Intercept and override the code rendering
 											components={{
-												// eslint-disable-next-line prefer-arrow/prefer-arrow-functions, @typescript-eslint/no-unused-vars, @typescript-eslint/no-explicit-any
+												// 1. THE MISSING LINK: Completely strip out ReactMarkdown's default <pre> wrapper!
+												// This stops Tailwind's typography plugin from ever finding a <pre> tag to mess with.
+												pre({ children }: any) {
+													return <>{children}</>;
+												},
+
+												// 2. Your existing perfected code block logic
 												code({ node, className, children, ...props }: any) {
 													const match = /language-(\w+)/.exec(className || '');
-													// If it has a language match (e.g., ```javascript), it's a code block
+
 													if (match) {
 														return (
-															<SyntaxHighlighter
-																{...props}
-																style={nord}
-																language={match[1]}
-																PreTag="div"
-																className="rounded-xl border border-border/20 shadow-md text-sm my-4"
-																customStyle={{ margin: 0, padding: '1rem' }}
-															>
-																{String(children).replace(/\n$/, '')}
-															</SyntaxHighlighter>
+															<div className="not-prose my-6 rounded-xl overflow-hidden border border-border/50 bg-sidebar shadow-md">
+																<div className="flex items-center justify-between px-4 py-2 bg-black/10 border-b border-border/20">
+																	<span className="text-xs font-mono font-medium text-muted-foreground uppercase tracking-wider select-none">
+																		{match[1]}
+																	</span>
+																</div>
+
+																<SyntaxHighlighter
+																	{...props}
+																	style={nightOwl}
+																	language={match[1]}
+																	PreTag="div" // Renders as div internally
+																	className="text-[0.95rem] md:text-base overflow-x-auto"
+																	customStyle={{
+																		margin: 0,
+																		padding: '1.25rem', // You now have 100% control over this padding!
+																		backgroundColor: 'transparent', // The bg-sidebar color will now show perfectly
+																		border: 'none',
+																		boxShadow: 'none'
+																	}}
+																>
+																	{String(children).replace(/\n$/, '')}
+																</SyntaxHighlighter>
+															</div>
 														);
 													}
-													// If there is no match, it's inline code (e.g., `const x = 1`)
+
 													return (
 														<code
 															{...props}
-															className="bg-muted/60 text-foreground px-1.5 py-0.5 rounded-md text-sm font-mono before:content-none after:content-none"
+															className="bg-muted/60 text-foreground px-1.5 py-0.5 rounded-md text-[0.95em] font-mono before:content-none after:content-none"
 														>
 															{children}
 														</code>
