@@ -53,133 +53,38 @@ body.theme-loaded {
   - Uses CSS variables for easy theming.
 =============================================================================*/
 
-/* Hide scrollbar by default */
-.custom-scrollbar::-webkit-scrollbar {
-  width: 0.3rem;
-  height: 0.3rem;
-  display: block;
+/* Firefox Support */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--scrollbar-thumb) transparent;
 }
 
-.custom-scrollbar:hover::-webkit-scrollbar {
-  width: 0.3rem;
-  height: 0.3rem;
-  display: block;
+/* Webkit (Chrome, Safari, Edge) */
+::-webkit-scrollbar {
+  width: 8px;  /* Thin vertical scrollbar for the main page/sidebar */
+  height: 8px; /* Thin horizontal scrollbar for your code blocks! */
 }
 
-/* responsive overrides */
-@media (min-width: 768px) {
-  .custom-scrollbar::-webkit-scrollbar {
-    width: 0.8rem;
-    height: 0.8rem;
-    display: block;
-  }
-
-  .custom-scrollbar:hover::-webkit-scrollbar {
-    width: 0.8rem;
-    height: 0.8rem;
-    display: block;
-  }
-
-  .custom-scrollbar::-webkit-scrollbar-track {
-    background: transparent;
-    border-radius: 100vw;
-    margin-block: 0.5em;
-  }
+::-webkit-scrollbar-track {
+  background: transparent; 
+  /* Optional: if you want a track background, use var(--muted) */
 }
 
-.custom-scrollbar::-webkit-scrollbar-track {
-  background: transparent;
-  border-radius: 100vw;
-  margin-block: 0.2em;
-}
-
-.custom-scrollbar:hover::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.custom-scrollbar:hover::-webkit-scrollbar-thumb {
+::-webkit-scrollbar-thumb {
   background-color: var(--scrollbar-thumb);
-  border: 0.25em solid var(--border);
-  border-radius: 100vw;
+  border-radius: 10px; /* Makes it pill-shaped */
+  
+  /* This creates a slick "floating" effect by making the thumb slightly smaller than the track */
+  border: 1px solid transparent;
+  background-clip: padding-box;
+  transition: background-color 0.2s ease;
 }
 
-.custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: var(--scrollbar-thumb-hover);
+::-webkit-scrollbar-thumb:hover {
+  background-color: var(--scrollbar-thumb-hover);
 }
 
-/* Animations */
-@theme {
-  /* Float animation for background orbs */
-  --animate-float: float 5s ease-in-out infinite;
-  
-  @keyframes float {
-    0%, 100% {
-      transform: translateY(0px) translateX(0px);
-    }
-    25% {
-      transform: translateY(-30px) translateX(20px);
-    }
-    50% {
-      transform: translateY(-20px) translateX(-20px);
-    }
-    75% {
-      transform: translateY(-40px) translateX(10px);
-    }
-  }
-
-  /* Bubble animations - different speeds for variety */
-  --animate-bubble-1: bubble-1 8s ease-in-out infinite;
-  --animate-bubble-2: bubble-2 10s ease-in-out infinite;
-  --animate-bubble-3: bubble-3 12s ease-in-out infinite;
-  
-  @keyframes bubble-1 {
-    0% {
-      transform: translateY(0) translateX(0) scale(0);
-      opacity: 0;
-    }
-    10% {
-      opacity: 1;
-    }
-    90% {
-      opacity: 1;
-    }
-    100% {
-      transform: translateY(-100vh) translateX(20px) scale(1);
-      opacity: 0;
-    }
-  }
-
-  @keyframes bubble-2 {
-    0% {
-      transform: translateY(0) translateX(0) scale(0);
-      opacity: 0;
-    }
-    10% {
-      opacity: 1;
-    }
-    90% {
-      opacity: 1;
-    }
-    100% {
-      transform: translateY(-100vh) translateX(-30px) scale(1.2);
-      opacity: 0;
-    }
-  }
-
-  @keyframes bubble-3 {
-    0% {
-      transform: translateY(0) translateX(0) scale(0);
-      opacity: 0;
-    }
-    10% {
-      opacity: 1;
-    }
-    90% {
-      opacity: 1;
-    }
-    100% {
-      transform: translateY(-100vh) translateX(15px) scale(0.8);
-      opacity: 0;
-    }
-  }
+/* Optional: Make the corner where horizontal and vertical scrollbars meet transparent */
+::-webkit-scrollbar-corner {
+  background: transparent;
 }

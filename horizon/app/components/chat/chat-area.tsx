@@ -1,21 +1,29 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable prefer-arrow/prefer-arrow-functions */
-import { Bot, Info, Mic, Paperclip, Search, Send } from 'lucide-react';
+import { Bot, Info, Mic, Palette, Paperclip, Search, Send } from 'lucide-react';
+import { useState } from 'react';
 import ReactMarkdown from 'react-markdown';
-// 1. Import Syntax Highlighter and the VS Code Dark theme
+// 1. Import all the cool themes you want to offer
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import {
+	a11yDark,
 	darcula,
+	dracula,
 	nightOwl,
 	nord,
-	okaidia,
-	twilight
+	xonokai
 } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import remarkGfm from 'remark-gfm';
 
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
+import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuTrigger
+} from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { SidebarTrigger } from '@/components/ui/sidebar';
 
@@ -41,6 +49,16 @@ const formatTime = (dateString: string | Date) => {
 	});
 };
 
+// 2. Map the display names to the actual theme objects
+const syntaxThemes: Record<string, any> = {
+	'Night Owl': nightOwl,
+	Nord: nord,
+	Darcula: darcula,
+	Dracula: dracula,
+	a11yDark: a11yDark,
+	xonokai: xonokai
+};
+
 export const ChatArea = ({
 	title = 'Chat',
 	isParent = false,
@@ -48,6 +66,9 @@ export const ChatArea = ({
 	isLeaf = true,
 	messages = []
 }: ChatAreaProps) => {
+	// 3. Set up the state to track the active syntax theme
+	const [activeSyntaxTheme, setActiveSyntaxTheme] = useState<string>('Nord');
+
 	return (
 		<div
 			className={`flex flex-col h-full w-full relative ${isParent ? 'bg-muted/10' : 'bg-background'}`}
@@ -63,20 +84,44 @@ export const ChatArea = ({
 					</h1>
 				</div>
 
-				<div className="flex items-center gap-3 shrink-0">
+				<div className="flex items-center gap-2 shrink-0">
+					{/* 4. THEME SWITCHER DROPDOWN */}
+					<DropdownMenu>
+						<DropdownMenuTrigger asChild>
+							<Button
+								variant="ghost"
+								size="icon"
+								className="text-muted-foreground hover:text-foreground"
+								title="Change Code Theme"
+							>
+								<Palette className="h-4 w-4" />
+							</Button>
+						</DropdownMenuTrigger>
+						<DropdownMenuContent
+							align="end"
+							className="w-48 bg-popover text-popover-foreground border-border shadow-md"
+						>
+							<div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+								Code Theme
+							</div>
+							{Object.keys(syntaxThemes).map((themeName) => (
+								<DropdownMenuItem
+									key={themeName}
+									onClick={() => setActiveSyntaxTheme(themeName)}
+									className={`cursor-pointer transition-colors ${activeSyntaxTheme === themeName ? 'bg-primary/20 text-primary font-medium' : ''}`}
+								>
+									{themeName}
+								</DropdownMenuItem>
+							))}
+						</DropdownMenuContent>
+					</DropdownMenu>
+
 					<Button
 						variant="ghost"
 						size="icon"
 						className="text-muted-foreground hover:text-foreground"
 					>
 						<Search className="h-5 w-5" />
-					</Button>
-					<Button
-						variant="ghost"
-						size="icon"
-						className="text-muted-foreground hover:text-foreground"
-					>
-						<Info className="h-5 w-5" />
 					</Button>
 				</div>
 			</header>
@@ -98,9 +143,12 @@ export const ChatArea = ({
 						<div key={msg._id} className="flex gap-4">
 							<Avatar className="h-8 w-8 shrink-0 mt-1">
 								{msg.role === 'user' ? (
-									<AvatarFallback className="bg-secondary text-secondary-foreground text-xs font-semibold">
-										You
-									</AvatarFallback>
+									<>
+										<AvatarImage src="https://i.pravatar.cc/440?img=13" />
+										<AvatarFallback className="bg-secondary text-secondary-foreground text-xs font-semibold">
+											You
+										</AvatarFallback>
+									</>
 								) : (
 									<AvatarFallback className="bg-primary text-primary-foreground">
 										<Bot className="h-5 w-5" />
@@ -123,78 +171,57 @@ export const ChatArea = ({
 										{msg.content}
 									</p>
 								) : (
-									<div
-										className="prose prose-sm md:prose-base max-w-none 
-                                        prose-headings:text-foreground 
-                                        prose-p:text-foreground/90 
-                                        prose-strong:text-foreground 
-                                        prose-em:text-foreground 
-                                        prose-a:text-primary hover:prose-a:text-primary/80 
-                                        prose-blockquote:border-primary 
-                                        prose-blockquote:text-muted-foreground 
-                                        prose-ul:text-foreground/90 
-                                        prose-ol:text-foreground/90 
-                                        prose-li:text-foreground/90 
-                                        prose-th:text-foreground 
-                                        prose-td:text-muted-foreground 
-                                        prose-hr:border-border"
-									>
-										<ReactMarkdown
-											remarkPlugins={[remarkGfm]}
-											components={{
-												// 1. THE MISSING LINK: Completely strip out ReactMarkdown's default <pre> wrapper!
-												// This stops Tailwind's typography plugin from ever finding a <pre> tag to mess with.
-												pre({ children }: any) {
-													return <>{children}</>;
-												},
+									<ReactMarkdown
+										remarkPlugins={[remarkGfm]}
+										components={{
+											pre({ children }: any) {
+												return <>{children}</>;
+											},
+											code({ node, className, children, ...props }: any) {
+												const match = /language-(\w+)/.exec(className || '');
 
-												// 2. Your existing perfected code block logic
-												code({ node, className, children, ...props }: any) {
-													const match = /language-(\w+)/.exec(className || '');
-
-													if (match) {
-														return (
-															<div className="not-prose my-6 rounded-xl overflow-hidden border border-border/50 bg-sidebar shadow-md">
-																<div className="flex items-center justify-between px-4 py-2 bg-black/10 border-b border-border/20">
-																	<span className="text-xs font-mono font-medium text-muted-foreground uppercase tracking-wider select-none">
-																		{match[1]}
-																	</span>
-																</div>
-
-																<SyntaxHighlighter
-																	{...props}
-																	style={nightOwl}
-																	language={match[1]}
-																	PreTag="div" // Renders as div internally
-																	className="text-[0.95rem] md:text-base overflow-x-auto"
-																	customStyle={{
-																		margin: 0,
-																		padding: '1.25rem', // You now have 100% control over this padding!
-																		backgroundColor: 'transparent', // The bg-sidebar color will now show perfectly
-																		border: 'none',
-																		boxShadow: 'none'
-																	}}
-																>
-																	{String(children).replace(/\n$/, '')}
-																</SyntaxHighlighter>
-															</div>
-														);
-													}
-
+												if (match) {
 													return (
-														<code
-															{...props}
-															className="bg-muted/60 text-foreground px-1.5 py-0.5 rounded-md text-[0.95em] font-mono before:content-none after:content-none"
-														>
-															{children}
-														</code>
+														<div className="not-prose my-6 rounded-xl overflow-hidden border border-border/50 bg-sidebar shadow-md">
+															<div className="flex items-center justify-between px-4 py-2 bg-black/10 border-b border-border/20">
+																<span className="text-xs font-mono font-medium text-muted-foreground uppercase tracking-wider select-none">
+																	{match[1]}
+																</span>
+															</div>
+															<SyntaxHighlighter
+																{...props}
+																// 5. Pass the dynamically selected theme object here!
+																style={syntaxThemes[activeSyntaxTheme]}
+																language={match[1]}
+																PreTag="div"
+																className="text-[0.95rem] md:text-base overflow-x-auto"
+																customStyle={{
+																	margin: 0,
+																	padding: '1.25rem',
+																	backgroundColor: 'transparent',
+																	border: 'none',
+																	boxShadow: 'none'
+																}}
+															>
+																{String(children).replace(/\n$/, '')}
+															</SyntaxHighlighter>
+														</div>
 													);
 												}
-											}}
-										>
-											{msg.content}
-										</ReactMarkdown>
-									</div>
+
+												return (
+													<code
+														{...props}
+														className="bg-muted/60 text-foreground px-1.5 py-0.5 rounded-md text-[0.95em] font-mono before:content-none after:content-none"
+													>
+														{children}
+													</code>
+												);
+											}
+										}}
+									>
+										{msg.content}
+									</ReactMarkdown>
 								)}
 							</div>
 						</div>
