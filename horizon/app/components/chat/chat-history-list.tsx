@@ -7,6 +7,7 @@ import {
 	SidebarContent,
 	SidebarHeader
 } from '@/components/ui/sidebar';
+import { Skeleton } from '@/components/ui/skeleton';
 import {
 	Tooltip,
 	TooltipContent,
@@ -14,7 +15,6 @@ import {
 	TooltipTrigger
 } from '@/components/ui/tooltip';
 import { TreeView } from '@/components/ui/tree-view';
-import { chatData } from '@/data/raw_chats';
 import { type ChatTreeItem } from '@/lib/chat/helper';
 import { cn } from '@/lib/utils';
 
@@ -23,11 +23,15 @@ import { ThemeToggle } from '../common/theme-toggle';
 interface ChatHistoryListProps {
 	selectedId: string;
 	onSelect: (id: string) => void;
+	data: ChatTreeItem[];
+	isLoading?: boolean;
 }
 
 export const ChatHistoryList = ({
 	selectedId,
-	onSelect
+	onSelect,
+	data,
+	isLoading
 }: ChatHistoryListProps) => {
 	return (
 		<TooltipProvider delayDuration={400}>
@@ -70,127 +74,149 @@ export const ChatHistoryList = ({
 
 				<SidebarContent className="px-2 bg-sidebar hide-scrollbar pb-2">
 					<div className="w-full grow overflow-hidden">
-						<TreeView
-							data={chatData}
-							initialSelectedItemId={selectedId}
-							expandAll={false}
-							className="w-full"
-							// FIX 1: Listen to the tree's internal selection change and pass it to layout
-							onSelectChange={(item) => {
-								if (item) onSelect(item.id);
-							}}
-							renderItem={({
-								item,
-								level,
-								isSelected,
-								hasChildren,
-								onToggle,
-								onSelect: treeOnSelect // FIX 2: Rename this so it doesn't clash with outer onSelect
-							}) => {
-								const chatItem = item as ChatTreeItem;
-								const branchCount = chatItem.children?.length || 0;
+						{isLoading ? (
+							<div
+								key="tree-skeleton"
+								className="flex flex-col gap-2 px-2 pt-4 animate-in fade-in duration-300"
+							>
+								{Array.from({ length: 4 }).map((_, i) => (
+									<div key={i} className="flex items-center gap-3 mb-1">
+										<Skeleton className="h-6 w-6 rounded-md shrink-0" />
+										<Skeleton
+											className={`h-5 rounded-md ${i % 2 === 0 ? 'w-full' : 'w-4/5'}`}
+										/>
+									</div>
+								))}
+							</div>
+						) : data.length > 0 && selectedId ? (
+							<div
+								key="tree-loaded"
+								className="animate-in fade-in slide-in-from-left-2 duration-700 ease-out h-full"
+							>
+								<TreeView
+									data={data}
+									initialSelectedItemId={selectedId}
+									expandAll={false}
+									className="w-full"
+									// FIX 1: Listen to the tree's internal selection change and pass it to layout
+									onSelectChange={(item) => {
+										if (item) onSelect(item.id);
+									}}
+									renderItem={({
+										item,
+										level,
+										isSelected,
+										hasChildren,
+										onToggle,
+										onSelect: treeOnSelect // FIX 2: Rename this so it doesn't clash with outer onSelect
+									}) => {
+										const chatItem = item as ChatTreeItem;
+										const branchCount = chatItem.children?.length || 0;
 
-								return (
-									<div
-										className={cn(
-											'group relative flex items-center justify-between w-full py-1.5 pr-2 pl-1 my-0.5 rounded-lg transition-all select-none',
-											isSelected ? 'bg-primary/25' : 'hover:bg-muted/50'
-										)}
-									>
-										{isSelected && (
-											<div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-[60%] bg-primary rounded-r-full shadow-[0_0_8px_rgba(var(--color-primary),0.4)]" />
-										)}
-
-										<div className="flex items-center gap-1.5 overflow-hidden text-left flex-1 pl-1">
+										return (
 											<div
-												onClick={(e) => {
-													e.stopPropagation();
-													if (hasChildren && onToggle) onToggle();
-												}}
 												className={cn(
-													'flex items-center justify-center h-6 w-6 shrink-0 rounded-md transition-colors',
-													hasChildren && 'cursor-pointer hover:bg-background/80'
+													'group relative flex items-center justify-between w-full py-1.5 pr-2 pl-1 my-0.5 rounded-lg transition-all select-none',
+													isSelected ? 'bg-primary/25' : 'hover:bg-muted/50'
 												)}
 											>
-												{level === 0 ? (
-													<MessageSquare
-														className={cn(
-															'h-4 w-4',
-															isSelected
-																? 'text-primary'
-																: 'text-primary-foreground'
-														)}
-													/>
-												) : (
-													<GitBranch
-														className={cn(
-															'h-4 w-4',
-															isSelected
-																? 'text-primary'
-																: 'text-primary-foreground'
-														)}
-													/>
+												{isSelected && (
+													<div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-[60%] bg-primary rounded-r-full shadow-[0_0_8px_rgba(var(--color-primary),0.4)]" />
 												)}
-											</div>
 
-											<Tooltip>
-												<TooltipTrigger asChild>
-													<span
+												<div className="flex items-center gap-1.5 overflow-hidden text-left flex-1 pl-1">
+													<div
 														onClick={(e) => {
 															e.stopPropagation();
-															// FIX 3: Call the internal tree function to trigger visual state update
-															if (treeOnSelect) treeOnSelect();
+															if (hasChildren && onToggle) onToggle();
 														}}
 														className={cn(
-															'truncate text-[1rem] font-medium leading-none cursor-pointer w-full py-1 transition-colors',
-															isSelected
-																? 'text-primary-foreground'
-																: 'text-foreground group-hover:text-foreground'
+															'flex items-center justify-center h-6 w-6 shrink-0 rounded-md transition-colors',
+															hasChildren &&
+																'cursor-pointer hover:bg-background/80'
 														)}
 													>
-														{chatItem.name}
-													</span>
-												</TooltipTrigger>
-												<TooltipContent
-													side="right"
-													sideOffset={10}
-													className="font-medium bg-popover text-popover-foreground border-border shadow-md"
-												>
-													{chatItem.name}
-												</TooltipContent>
-											</Tooltip>
-										</div>
+														{level === 0 ? (
+															<MessageSquare
+																className={cn(
+																	'h-4 w-4',
+																	isSelected
+																		? 'text-primary'
+																		: 'text-primary-foreground'
+																)}
+															/>
+														) : (
+															<GitBranch
+																className={cn(
+																	'h-4 w-4',
+																	isSelected
+																		? 'text-primary'
+																		: 'text-primary-foreground'
+																)}
+															/>
+														)}
+													</div>
 
-										<div className="flex items-center gap-1.5 shrink-0 ml-1.5">
-											{branchCount > 0 && (
-												<span
-													className={cn(
-														'flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-sm font-bold',
-														isSelected
-															? 'bg-primary text-primary-foreground shadow-sm'
-															: 'bg-primary/25 text-primary-foreground/40'
+													<Tooltip>
+														<TooltipTrigger asChild>
+															<span
+																onClick={(e) => {
+																	e.stopPropagation();
+																	// FIX 3: Call the internal tree function to trigger visual state update
+																	if (treeOnSelect) treeOnSelect();
+																}}
+																className={cn(
+																	'truncate text-[1rem] font-medium leading-none cursor-pointer w-full py-1 transition-colors',
+																	isSelected
+																		? 'text-primary-foreground'
+																		: 'text-foreground group-hover:text-foreground'
+																)}
+															>
+																{chatItem.name}
+															</span>
+														</TooltipTrigger>
+														<TooltipContent
+															side="right"
+															sideOffset={10}
+															className="font-medium bg-popover text-popover-foreground border-border shadow-md"
+														>
+															{chatItem.name}
+														</TooltipContent>
+													</Tooltip>
+												</div>
+
+												<div className="flex items-center gap-1.5 shrink-0 ml-1.5">
+													{branchCount > 0 && (
+														<span
+															className={cn(
+																'flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-sm font-bold',
+																isSelected
+																	? 'bg-primary text-primary-foreground shadow-sm'
+																	: 'bg-primary/25 text-primary-foreground/40'
+															)}
+														>
+															{branchCount}
+														</span>
 													)}
-												>
-													{branchCount}
-												</span>
-											)}
-											{chatItem.time && (
-												<span
-													className={cn(
-														'text-sm font-medium',
-														isSelected
-															? 'text-primary'
-															: 'text-muted-foreground/60'
+													{chatItem.time && (
+														<span
+															className={cn(
+																'text-sm font-medium',
+																isSelected
+																	? 'text-primary'
+																	: 'text-muted-foreground/60'
+															)}
+														>
+															{chatItem.time}
+														</span>
 													)}
-												>
-													{chatItem.time}
-												</span>
-											)}
-										</div>
-									</div>
-								);
-							}}
-						/>
+												</div>
+											</div>
+										);
+									}}
+								/>
+							</div>
+						) : null}
 					</div>
 				</SidebarContent>
 			</Sidebar>

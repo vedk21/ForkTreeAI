@@ -26,6 +26,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { SidebarTrigger } from '@/components/ui/sidebar';
+import { Skeleton } from '@/components/ui/skeleton';
 
 export interface ChatMessage {
 	_id: string;
@@ -40,6 +41,7 @@ interface ChatAreaProps {
 	isFirstWindow?: boolean;
 	isLeaf?: boolean;
 	messages?: ChatMessage[];
+	isLoading?: boolean;
 }
 
 const formatTime = (dateString: string | Date) => {
@@ -64,7 +66,8 @@ export const ChatArea = ({
 	isParent = false,
 	isFirstWindow = true,
 	isLeaf = true,
-	messages = []
+	messages = [],
+	isLoading = false
 }: ChatAreaProps) => {
 	// 3. Set up the state to track the active syntax theme
 	const [activeSyntaxTheme, setActiveSyntaxTheme] = useState<string>('Nord');
@@ -128,104 +131,151 @@ export const ChatArea = ({
 
 			{/* Messages Area */}
 			<div className="flex-1 overflow-y-auto px-4 lg:px-12 py-6">
-				<div className="flex flex-col gap-8 max-w-4xl mx-auto pb-24">
-					{messages.length > 0 && (
-						<div className="text-center text-xs text-muted-foreground my-4 font-medium">
-							{new Date(messages[0].created_at).toLocaleDateString(undefined, {
-								weekday: 'long',
-								month: 'short',
-								day: 'numeric'
-							})}
-						</div>
-					)}
-
-					{messages.map((msg) => (
-						<div key={msg._id} className="flex gap-4">
-							<Avatar className="h-8 w-8 shrink-0 mt-1">
-								{msg.role === 'user' ? (
-									<>
-										<AvatarImage src="https://i.pravatar.cc/440?img=13" />
-										<AvatarFallback className="bg-secondary text-secondary-foreground text-xs font-semibold">
-											You
-										</AvatarFallback>
-									</>
-								) : (
-									<AvatarFallback className="bg-primary text-primary-foreground">
-										<Bot className="h-5 w-5" />
-									</AvatarFallback>
-								)}
-							</Avatar>
-
-							<div className="flex flex-col gap-1.5 mt-1 w-full overflow-hidden">
-								<div className="flex items-center gap-2">
-									<span className="font-semibold text-[0.95rem] text-foreground">
-										{msg.role === 'user' ? 'You' : 'ForkTreeAI'}
-									</span>
-									<span className="text-xs text-muted-foreground font-medium">
-										{formatTime(msg.created_at)}
-									</span>
+				<div
+					key={title}
+					className="flex flex-col gap-8 max-w-4xl mx-auto pb-24"
+				>
+					{isLoading ? (
+						<div
+							key="loading-skeleton"
+							className="flex flex-col gap-8 w-full animate-in fade-in duration-300"
+						>
+							{/* Skeleton loader for a user message */}
+							<div className="flex gap-4 mt-4">
+								<Skeleton className="h-8 w-8 rounded-full shrink-0 mt-1" />
+								<div className="flex flex-col gap-2 mt-1 w-full">
+									<div className="flex items-center gap-2">
+										<Skeleton className="h-4 w-12" />
+										<Skeleton className="h-3 w-16" />
+									</div>
+									<Skeleton className="h-4 w-full max-w-md" />
+									<Skeleton className="h-4 w-5/6 max-w-sm" />
 								</div>
-
-								{msg.role === 'user' ? (
-									<p className="text-foreground text-[0.95rem] leading-relaxed whitespace-pre-wrap">
-										{msg.content}
-									</p>
-								) : (
-									<ReactMarkdown
-										remarkPlugins={[remarkGfm]}
-										components={{
-											pre({ children }: any) {
-												return <>{children}</>;
-											},
-											code({ node, className, children, ...props }: any) {
-												const match = /language-(\w+)/.exec(className || '');
-
-												if (match) {
-													return (
-														<div className="not-prose my-6 rounded-xl overflow-hidden border border-border/50 bg-sidebar shadow-md">
-															<div className="flex items-center justify-between px-4 py-2 bg-black/10 border-b border-border/20">
-																<span className="text-xs font-mono font-medium text-muted-foreground uppercase tracking-wider select-none">
-																	{match[1]}
-																</span>
-															</div>
-															<SyntaxHighlighter
-																{...props}
-																// 5. Pass the dynamically selected theme object here!
-																style={syntaxThemes[activeSyntaxTheme]}
-																language={match[1]}
-																PreTag="div"
-																className="text-[0.95rem] md:text-base overflow-x-auto"
-																customStyle={{
-																	margin: 0,
-																	padding: '1.25rem',
-																	backgroundColor: 'transparent',
-																	border: 'none',
-																	boxShadow: 'none'
-																}}
-															>
-																{String(children).replace(/\n$/, '')}
-															</SyntaxHighlighter>
-														</div>
-													);
-												}
-
-												return (
-													<code
-														{...props}
-														className="bg-muted/60 text-foreground px-1.5 py-0.5 rounded-md text-[0.95em] font-mono before:content-none after:content-none"
-													>
-														{children}
-													</code>
-												);
-											}
-										}}
-									>
-										{msg.content}
-									</ReactMarkdown>
-								)}
+							</div>
+							{/* Skeleton loader for a bot message with pseudo-code block */}
+							<div className="flex gap-4 mt-6">
+								<Skeleton className="h-8 w-8 rounded-full shrink-0 mt-1" />
+								<div className="flex flex-col gap-2 mt-1 w-full">
+									<div className="flex items-center gap-2">
+										<Skeleton className="h-4 w-24" />
+										<Skeleton className="h-3 w-16" />
+									</div>
+									<Skeleton className="h-4 w-full max-w-2xl" />
+									<Skeleton className="h-4 w-11/12 max-w-2xl" />
+									<Skeleton className="h-4 w-4/5 max-w-xl" />
+									<Skeleton className="h-32 w-full max-w-2xl rounded-xl mt-2" />
+								</div>
 							</div>
 						</div>
-					))}
+					) : (
+						<div
+							key="loaded-content"
+							className="flex flex-col gap-8 w-full animate-in fade-in slide-in-from-bottom-4 duration-700 ease-out"
+						>
+							{messages.length > 0 && (
+								<div className="text-center text-xs text-muted-foreground my-4 font-medium">
+									{new Date(messages[0].created_at).toLocaleDateString(
+										undefined,
+										{
+											weekday: 'long',
+											month: 'short',
+											day: 'numeric'
+										}
+									)}
+								</div>
+							)}
+
+							{messages.map((msg) => (
+								<div key={msg._id} className="flex gap-4">
+									<Avatar className="h-8 w-8 shrink-0 mt-1">
+										{msg.role === 'user' ? (
+											<>
+												<AvatarImage src="https://i.pravatar.cc/440?img=13" />
+												<AvatarFallback className="bg-secondary text-secondary-foreground text-xs font-semibold">
+													You
+												</AvatarFallback>
+											</>
+										) : (
+											<AvatarFallback className="bg-primary text-primary-foreground">
+												<Bot className="h-5 w-5" />
+											</AvatarFallback>
+										)}
+									</Avatar>
+
+									<div className="flex flex-col gap-1.5 mt-1 w-full overflow-hidden">
+										<div className="flex items-center gap-2">
+											<span className="font-semibold text-[0.95rem] text-foreground">
+												{msg.role === 'user' ? 'You' : 'ForkTreeAI'}
+											</span>
+											<span className="text-xs text-muted-foreground font-medium">
+												{formatTime(msg.created_at)}
+											</span>
+										</div>
+
+										{msg.role === 'user' ? (
+											<p className="text-foreground text-[0.95rem] leading-relaxed whitespace-pre-wrap">
+												{msg.content}
+											</p>
+										) : (
+											<ReactMarkdown
+												remarkPlugins={[remarkGfm]}
+												components={{
+													pre({ children }: any) {
+														return <>{children}</>;
+													},
+													code({ node, className, children, ...props }: any) {
+														const match = /language-(\w+)/.exec(
+															className || ''
+														);
+
+														if (match) {
+															return (
+																<div className="not-prose my-6 rounded-xl overflow-hidden border border-border/50 bg-sidebar shadow-md">
+																	<div className="flex items-center justify-between px-4 py-2 bg-black/10 border-b border-border/20">
+																		<span className="text-xs font-mono font-medium text-muted-foreground uppercase tracking-wider select-none">
+																			{match[1]}
+																		</span>
+																	</div>
+																	<SyntaxHighlighter
+																		{...props}
+																		// 5. Pass the dynamically selected theme object here!
+																		style={syntaxThemes[activeSyntaxTheme]}
+																		language={match[1]}
+																		PreTag="div"
+																		className="text-[0.95rem] md:text-base overflow-x-auto"
+																		customStyle={{
+																			margin: 0,
+																			padding: '1.25rem',
+																			backgroundColor: 'transparent',
+																			border: 'none',
+																			boxShadow: 'none'
+																		}}
+																	>
+																		{String(children).replace(/\n$/, '')}
+																	</SyntaxHighlighter>
+																</div>
+															);
+														}
+
+														return (
+															<code
+																{...props}
+																className="bg-muted/60 text-foreground px-1.5 py-0.5 rounded-md text-[0.95em] font-mono before:content-none after:content-none"
+															>
+																{children}
+															</code>
+														);
+													}
+												}}
+											>
+												{msg.content}
+											</ReactMarkdown>
+										)}
+									</div>
+								</div>
+							))}
+						</div>
+					)}
 				</div>
 			</div>
 
