@@ -147,6 +147,7 @@ const TreeView = React.forwardRef<HTMLDivElement, TreeProps>(
 					handleDrop={handleDrop}
 					draggedItem={draggedItem}
 					renderItem={renderItem}
+					expandAll={expandAll}
 					level={0}
 					{...props}
 				/>
@@ -172,6 +173,7 @@ type TreeItemProps = TreeProps & {
 	handleDrop?: (item: TreeDataItem) => void;
 	draggedItem: TreeDataItem | null;
 	level?: number;
+	expandAll?: boolean;
 };
 
 const TreeItem = React.forwardRef<HTMLDivElement, TreeItemProps>(
@@ -189,6 +191,7 @@ const TreeItem = React.forwardRef<HTMLDivElement, TreeItemProps>(
 			draggedItem,
 			renderItem,
 			level,
+			expandAll,
 			...props
 		},
 		ref
@@ -214,6 +217,7 @@ const TreeItem = React.forwardRef<HTMLDivElement, TreeItemProps>(
 									handleDrop={handleDrop}
 									draggedItem={draggedItem}
 									renderItem={renderItem}
+									expandAll={expandAll}
 								/>
 							) : (
 								<TreeLeaf
@@ -248,6 +252,7 @@ const TreeNode = ({
 	handleDrop,
 	draggedItem,
 	renderItem,
+	expandAll,
 	level = 0
 }: {
 	item: TreeDataItem;
@@ -260,15 +265,29 @@ const TreeNode = ({
 	handleDrop?: (item: TreeDataItem) => void;
 	draggedItem: TreeDataItem | null;
 	renderItem?: (params: TreeRenderItemParams) => React.ReactNode;
+	expandAll?: boolean;
 	level?: number;
 }) => {
-	const [value, setValue] = React.useState(
-		expandedItemIds.includes(item.id) ? [item.id] : []
+	const [userSetValue, setUserSetValue] = React.useState<string[] | undefined>(
+		undefined
 	);
+
+	const isInitiallyExpanded = expandedItemIds.includes(item.id);
+
+	const finalValue = React.useMemo(() => {
+		if (expandAll) {
+			return [item.id];
+		}
+		if (userSetValue !== undefined) {
+			return userSetValue;
+		}
+		return isInitiallyExpanded ? [item.id] : [];
+	}, [expandAll, userSetValue, isInitiallyExpanded, item.id]);
+
 	const [isDragOver, setIsDragOver] = React.useState(false);
 	const hasChildren = !!item.children?.length;
 	const isSelected = selectedItemId === item.id;
-	const isOpen = value.includes(item.id);
+	const isOpen = finalValue.includes(item.id);
 
 	const onDragStart = (e: React.DragEvent) => {
 		if (!item.draggable) {
@@ -299,8 +318,8 @@ const TreeNode = ({
 	return (
 		<AccordionPrimitive.Root
 			type="multiple"
-			value={value}
-			onValueChange={(s) => setValue(s)}
+			value={finalValue}
+			onValueChange={setUserSetValue}
 		>
 			<AccordionPrimitive.Item value={item.id}>
 				{/* 2. REMOVED AccordionTrigger constraint when using renderItem */}
@@ -321,7 +340,7 @@ const TreeNode = ({
 							isOpen,
 							hasChildren,
 							// Pass the controlled toggle and select actions down
-							onToggle: () => setValue(isOpen ? [] : [item.id]),
+							onToggle: () => setUserSetValue(isOpen ? [] : [item.id]),
 							onSelect: () => {
 								handleSelectChange(item);
 								item.onClick?.();
@@ -358,21 +377,24 @@ const TreeNode = ({
 					</AccordionTrigger>
 				)}
 
-				<AccordionContent className="ml-4.5 pl-2 border-l border-border/50">
-					<TreeItem
-						data={item.children ? item.children : item}
-						selectedItemId={selectedItemId}
-						handleSelectChange={handleSelectChange}
-						expandedItemIds={expandedItemIds}
-						defaultLeafIcon={defaultLeafIcon}
-						defaultNodeIcon={defaultNodeIcon}
-						handleDragStart={handleDragStart}
-						handleDrop={handleDrop}
-						draggedItem={draggedItem}
-						renderItem={renderItem}
-						level={level + 1}
-					/>
-				</AccordionContent>
+				{hasChildren && (
+					<AccordionContent className="ml-4.5 pl-2 border-l border-border/50">
+						<TreeItem
+							data={item.children ? item.children : item}
+							selectedItemId={selectedItemId}
+							handleSelectChange={handleSelectChange}
+							expandedItemIds={expandedItemIds}
+							defaultLeafIcon={defaultLeafIcon}
+							defaultNodeIcon={defaultNodeIcon}
+							handleDragStart={handleDragStart}
+							handleDrop={handleDrop}
+							draggedItem={draggedItem}
+							renderItem={renderItem}
+							expandAll={expandAll}
+							level={level + 1}
+						/>
+					</AccordionContent>
+				)}
 			</AccordionPrimitive.Item>
 		</AccordionPrimitive.Root>
 	);

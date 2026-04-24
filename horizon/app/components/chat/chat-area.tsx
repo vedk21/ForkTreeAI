@@ -130,7 +130,9 @@ export const ChatArea = ({
 			</header>
 
 			{/* Messages Area */}
-			<div className="flex-1 overflow-y-auto px-4 lg:px-12 py-6">
+			<div
+				className={`flex-1 overflow-y-auto px-4 lg:px-12 py-6 ${!isParent && isLeaf ? 'mb-24' : 'mb-4'}`}
+			>
 				<div
 					key={title}
 					className="flex flex-col gap-8 max-w-4xl mx-auto pb-24"
