@@ -11,7 +11,7 @@ async def get_ai_response(history: list, new_content: str) -> str:
     """Initializes chat with the specific branch history and gets the next response."""
 
     # 2. Map our generic history dicts into the new SDK's strict typed models
-    formatted_history = []
+    formatted_history: list[types.Content | types.ContentDict] = []
     for msg in history:
         # Extract the string content we passed from chat_service.py
         content_text = msg["parts"][0]
@@ -26,4 +26,4 @@ async def get_ai_response(history: list, new_content: str) -> str:
 
     # 4. Await the response
     response = await chat.send_message(new_content)
-    return response.text
+    return response.text or ""

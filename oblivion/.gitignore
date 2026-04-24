@@ -12,3 +12,10 @@ wheels/
 # Environments
 .env
 .env.*
+
+.venv/
+.mypy_cache/
+.pytest_cache/
+__pycache__/
+*.pyc
+.dmypy.json

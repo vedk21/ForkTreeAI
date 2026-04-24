@@ -1,15 +1,16 @@
 from datetime import UTC, datetime
+from typing import Any, cast
 
 from bson import ObjectId
 from fastapi import HTTPException
 
 from app.core.config import settings
 from app.core.database import db
-from app.models.chat import MessageRequest, MessageUpdate
+from app.models.chat import MessageRequest, MessageResponse, MessageUpdate
 from app.services.message import _generate_ai_content, _save_message, _update_branch_pointers
 
 
-async def create_conversation(title: str) -> str:
+async def create_conversation(title: str) -> dict[str, Any]:
     doc = {
         "title": title,
         "created_at": datetime.now(UTC),
@@ -19,11 +20,15 @@ async def create_conversation(title: str) -> str:
     result = await db.conversations.insert_one(doc)
 
     # Fetch the inserted document by its _id
-    created_doc = await db.conversations.find_one({"_id": result.inserted_id})
+    created_doc = cast(dict[str, Any], await db.conversations.find_one({"_id": result.inserted_id}))
+    if created_doc is None:
+        raise HTTPException(status_code=500, detail="Failed to create conversation")
+
+    created_doc["id"] = str(created_doc.pop("_id"))
     return created_doc
 
 
-async def process_new_message(conv_id: str, request: MessageRequest) -> dict:
+async def process_new_message(conv_id: str, request: MessageRequest) -> MessageResponse:
     """Orchestrates the flow of saving messages, fetching AI context, and updating branches."""
 
     # 1. Save User Message
@@ -54,10 +59,10 @@ async def process_new_message(conv_id: str, request: MessageRequest) -> dict:
 
     # Clean up the raw MongoDB _id before returning the Pydantic-compatible dict
     ai_msg_doc.pop("_id", None)
-    return ai_msg_doc
+    return MessageResponse(**ai_msg_doc)
 
 
-async def get_all_messages(conv_id: str) -> list[dict]:
+async def get_all_messages(conv_id: str) -> list[MessageResponse]:
     cursor = db.messages.find({"conversation_id": conv_id, "is_deleted": False}).sort(
         "created_at", 1
     )
@@ -67,7 +72,7 @@ async def get_all_messages(conv_id: str) -> list[dict]:
     return messages
 
 
-async def update_message(msg_id: str, update_data: MessageUpdate) -> dict:
+async def update_message(msg_id: str, update_data: MessageUpdate) -> MessageResponse:
     """Updates a message after validating it is a user role."""
     # 1. Fetch message to validate role
     existing_msg = await db.messages.find_one({"_id": ObjectId(msg_id)})
@@ -89,12 +94,15 @@ async def update_message(msg_id: str, update_data: MessageUpdate) -> dict:
     result = await db.messages.find_one_and_update(
         {"_id": ObjectId(msg_id)}, {"$set": update_fields}, return_document=True
     )
+    if result is None:
+        raise HTTPException(status_code=404, detail="Message not found")
 
+    result = cast(dict[str, Any], result)
     result["id"] = str(result.pop("_id"))
-    return result
+    return MessageResponse(**result)
 
 
-async def delete_message(msg_id: str) -> dict:
+async def delete_message(msg_id: str) -> MessageResponse:
     """Soft deletes a user message and its direct AI response."""
     # 1. Fetch message to validate role
     existing_msg = await db.messages.find_one({"_id": ObjectId(msg_id)})
@@ -114,19 +122,23 @@ async def delete_message(msg_id: str) -> dict:
         return_document=True,
     )
 
+    if result is None:
+        raise HTTPException(status_code=404, detail="Message not found")
+
     # 3. Soft delete the immediate AI response (where parent_id == this msg_id and role is model)
     await db.messages.update_many(
         {"parent_id": msg_id, "role": "model"}, {"$set": {"is_deleted": True, "updated_at": now}}
     )
 
+    result = cast(dict[str, Any], result)
     result["id"] = str(result.pop("_id"))
-    return result
+    return MessageResponse(**result)
 
 
 async def get_tree_view() -> list[dict]:
     """Builds the nested JSON hierarchy of all conversations and branches."""
     # 1. Use MongoDB Aggregation to fetch only valid branches
-    pipeline = [
+    pipeline: list[dict[str, Any]] = [
         {
             # Cross-reference the messages collection
             "$lookup": {
@@ -192,7 +204,7 @@ async def get_tree_view() -> list[dict]:
     return root_branches
 
 
-async def get_messages_for_branch(conv_id: str, branch_id: str) -> list[dict]:
+async def get_messages_for_branch(conv_id: str, branch_id: str) -> list[MessageResponse]:
     """Returns ONLY the messages unique to this branch (stops at the fork point)."""
     branch = await db.branches.find_one({"_id": ObjectId(branch_id), "conversation_id": conv_id})
     if not branch:
@@ -201,7 +213,7 @@ async def get_messages_for_branch(conv_id: str, branch_id: str) -> list[dict]:
     head_id = branch["head_message_id"]
     fork_id = branch.get("fork_message_id")  # This is where we need to stop
 
-    chain = []
+    chain: list[dict[str, Any]] = []
     current_id = head_id
 
     # Traverse bottom-up, but STOP when we hit the fork point
@@ -217,4 +229,4 @@ async def get_messages_for_branch(conv_id: str, branch_id: str) -> list[dict]:
         chain.insert(0, msg)
         current_id = msg.get("parent_id")
 
-    return chain
+    return [MessageResponse(**msg) for msg in chain]
