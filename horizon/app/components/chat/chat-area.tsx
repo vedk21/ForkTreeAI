@@ -70,7 +70,8 @@ export const ChatArea = ({
 	isLoading = false
 }: ChatAreaProps) => {
 	// 3. Set up the state to track the active syntax theme
-	const [activeSyntaxTheme, setActiveSyntaxTheme] = useState<string>('Nord');
+	const [activeSyntaxTheme, setActiveSyntaxTheme] =
+		useState<string>('Night Owl');
 
 	return (
 		<div

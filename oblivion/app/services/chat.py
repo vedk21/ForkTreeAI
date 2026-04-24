@@ -1,3 +1,4 @@
+import asyncio
 from datetime import UTC, datetime
 from typing import Any, cast
 
@@ -6,26 +7,51 @@ from fastapi import HTTPException
 
 from app.core.config import settings
 from app.core.database import db
-from app.models.chat import MessageRequest, MessageResponse, MessageUpdate
+from app.models.chat import (
+    ConversationRequest,
+    MessageRequest,
+    MessageResponse,
+    MessageUpdate,
+    TreeViewResponse,
+)
 from app.services.message import _generate_ai_content, _save_message, _update_branch_pointers
 
 
-async def create_conversation(title: str) -> dict[str, Any]:
+async def create_conversation(request: ConversationRequest) -> TreeViewResponse:
     doc = {
-        "title": title,
+        "title": request.title,
         "created_at": datetime.now(UTC),
         "updated_at": None,
         "is_deleted": False,
     }
     result = await db.conversations.insert_one(doc)
+    # Create new message using request.content
+    result = await process_new_message(
+        str(result.inserted_id),
+        MessageRequest(content=request.content, new_branch_name=request.title),
+    )
 
-    # Fetch the inserted document by its _id
-    created_doc = cast(dict[str, Any], await db.conversations.find_one({"_id": result.inserted_id}))
-    if created_doc is None:
-        raise HTTPException(status_code=500, detail="Failed to create conversation")
+    # Get branch details for this new conversation_id
+    branch_result = await db.branches.find_one({"conversation_id": str(result.conversation_id)})
 
-    created_doc["id"] = str(created_doc.pop("_id"))
-    return created_doc
+    if branch_result is None:
+        raise HTTPException(status_code=404, detail="Branch not found")
+
+    branch_result = cast(dict[str, Any], branch_result)
+    branch_result["id"] = str(branch_result.pop("_id"))
+
+    # Wait before sending respose
+    await asyncio.sleep(5)
+
+    return TreeViewResponse(
+        id=branch_result.get("id"),
+        conversation_id=str(branch_result.get("conversation_id")),
+        name_of_branch=request.title or "Main Branch",
+        branch_id=branch_result.get("id"),
+        created_at=branch_result.get("created_at"),
+        updated_at=None,
+        children=[],
+    )
 
 
 async def process_new_message(conv_id: str, request: MessageRequest) -> MessageResponse:
@@ -135,7 +161,7 @@ async def delete_message(msg_id: str) -> MessageResponse:
     return MessageResponse(**result)
 
 
-async def get_tree_view() -> list[dict]:
+async def get_tree_view() -> list[TreeViewResponse]:
     """Builds the nested JSON hierarchy of all conversations and branches."""
     # 1. Use MongoDB Aggregation to fetch only valid branches
     pipeline: list[dict[str, Any]] = [

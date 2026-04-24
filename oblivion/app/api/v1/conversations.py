@@ -2,23 +2,22 @@ import asyncio
 
 from fastapi import APIRouter
 
-from app.models.chat import ConversationRequest, MessageRequest, MessageResponse, MessageUpdate
+from app.models.chat import (
+    ConversationRequest,
+    MessageRequest,
+    MessageResponse,
+    MessageUpdate,
+    TreeViewResponse,
+)
 from app.services import chat as chat_service
 from app.services.message import get_branch_path
 
 router = APIRouter(prefix="/conversations", tags=["Conversations"])
 
 
-@router.post("", response_model=dict)
-async def create_conversation(request: ConversationRequest) -> dict:
-    result = await chat_service.create_conversation(request.title)
-    return {
-        "conversation_id": str(result.get("id")),
-        "title": request.title,
-        "created_at": result.get("created_at"),
-        "updatedAt": result.get("updated_at"),
-        "is_deleted": result.get("is_deleted"),
-    }
+@router.post("", response_model=TreeViewResponse)
+async def create_conversation(request: ConversationRequest) -> TreeViewResponse:
+    return await chat_service.create_conversation(request)
 
 
 @router.post("/{conv_id}/messages", response_model=MessageResponse)
@@ -48,8 +47,8 @@ async def soft_delete_message(conv_id: str, msg_id: str) -> MessageResponse:
     return await chat_service.delete_message(msg_id)
 
 
-@router.get("/tree-view", response_model=list[dict])
-async def get_tree_view() -> list[dict]:
+@router.get("/tree-view", response_model=list[TreeViewResponse])
+async def get_tree_view() -> list[TreeViewResponse]:
     """Gets the nested tree of all conversations and branches."""
     await asyncio.sleep(5)
     return await chat_service.get_tree_view()

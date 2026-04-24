@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 
 import { ChatArea, type ChatMessage } from '@/components/chat/chat-area';
 import { ChatHistoryList } from '@/components/chat/chat-history-list';
+import { CreateConversation } from '@/components/chat/create-conversation';
 import {
 	ResizableHandle,
 	ResizablePanel,
@@ -25,6 +26,8 @@ export const ChatLayout = () => {
 
 	const [isLoadingTree, setIsLoadingTree] = useState<boolean>(true);
 	const [isLoadingMessages, setIsLoadingMessages] = useState<boolean>(false);
+	const [isCreateModalOpen, setIsCreateModalOpen] = useState<boolean>(false);
+	const [isCreatingItem, setIsCreatingItem] = useState<boolean>(false);
 
 	// 1.5 Fetch Tree View Data
 	useEffect(() => {
@@ -146,61 +149,75 @@ export const ChatLayout = () => {
 	}, [currentChat, parentChat]);
 
 	return (
-		<SidebarProvider>
-			<ChatHistoryList
-				selectedId={selectedId}
-				onSelect={setSelectedId}
-				data={treeData}
-				isLoading={isLoadingTree}
-			/>
+		<>
+			<SidebarProvider>
+				<ChatHistoryList
+					selectedId={selectedId}
+					onSelect={setSelectedId}
+					data={treeData}
+					isLoading={isLoadingTree}
+					isCreating={isCreatingItem}
+					onCreateClick={() => setIsCreateModalOpen(true)}
+				/>
 
-			<SidebarInset className="flex-1 flex flex-col bg-background min-w-0 overflow-hidden h-screen transition-colors duration-300">
-				{/* 3. Conditional Layout Logic */}
-				{parentChat && parentMessages.length > 0 ? (
-					// HAS PARENT: Render Split View
-					<ResizablePanelGroup
-						orientation="horizontal"
-						className="w-full h-full"
-					>
-						{/* Parent Chat (Left) */}
-						<ResizablePanel defaultSize="50%" minSize="30%">
-							<ChatArea
-								title={parentChat.name}
-								isParent={true}
-								isFirstWindow={true}
-								isLeaf={false}
-								messages={parentMessages}
-								isLoading={isLoadingMessages}
+				<SidebarInset className="flex-1 flex flex-col bg-background min-w-0 overflow-hidden h-screen transition-colors duration-300">
+					{/* 3. Conditional Layout Logic */}
+					{parentChat && parentMessages.length > 0 ? (
+						// HAS PARENT: Render Split View
+						<ResizablePanelGroup
+							orientation="horizontal"
+							className="w-full h-full"
+						>
+							{/* Parent Chat (Left) */}
+							<ResizablePanel defaultSize="50%" minSize="30%">
+								<ChatArea
+									title={parentChat.name}
+									isParent={true}
+									isFirstWindow={true}
+									isLeaf={false}
+									messages={parentMessages}
+									isLoading={isLoadingMessages}
+								/>
+							</ResizablePanel>
+
+							{/* Visible Drag Handle */}
+							<ResizableHandle
+								withHandle
+								className="w-1 bg-border/40 hover:bg-primary/50 transition-colors"
 							/>
-						</ResizablePanel>
 
-						{/* Visible Drag Handle */}
-						<ResizableHandle
-							withHandle
-							className="w-1 bg-border/40 hover:bg-primary/50 transition-colors"
+							{/* Current Child Chat (Right) */}
+							<ResizablePanel defaultSize="50%" minSize="30%">
+								<ChatArea
+									title={currentChat?.name}
+									isFirstWindow={false}
+									isLeaf={isCurrentLeaf}
+									messages={currentMessages} // dynamically passed
+									isLoading={isLoadingMessages}
+								/>
+							</ResizablePanel>
+						</ResizablePanelGroup>
+					) : (
+						// NO PARENT: Render Single View
+						<ChatArea
+							title={currentChat?.name || 'Select a conversation'}
+							isLeaf={isCurrentLeaf}
+							messages={currentMessages} // dynamically passed
+							isLoading={isLoadingMessages}
 						/>
+					)}
+				</SidebarInset>
+			</SidebarProvider>
 
-						{/* Current Child Chat (Right) */}
-						<ResizablePanel defaultSize="50%" minSize="30%">
-							<ChatArea
-								title={currentChat?.name}
-								isFirstWindow={false}
-								isLeaf={isCurrentLeaf}
-								messages={currentMessages} // dynamically passed
-								isLoading={isLoadingMessages}
-							/>
-						</ResizablePanel>
-					</ResizablePanelGroup>
-				) : (
-					// NO PARENT: Render Single View
-					<ChatArea
-						title={currentChat?.name || 'Select a conversation'}
-						isLeaf={isCurrentLeaf}
-						messages={currentMessages} // dynamically passed
-						isLoading={isLoadingMessages}
-					/>
-				)}
-			</SidebarInset>
-		</SidebarProvider>
+			<CreateConversation
+				open={isCreateModalOpen}
+				onClose={() => setIsCreateModalOpen(false)}
+				onCreated={(newItem) => {
+					setTreeData((prev) => [...prev, newItem]);
+					setSelectedId(newItem.id);
+				}}
+				onCreatingChange={setIsCreatingItem}
+			/>
+		</>
 	);
 };

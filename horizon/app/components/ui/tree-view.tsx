@@ -79,6 +79,10 @@ const TreeView = React.forwardRef<HTMLDivElement, TreeProps>(
 			null
 		);
 
+		React.useEffect(() => {
+			setSelectedItemId(initialSelectedItemId);
+		}, [initialSelectedItemId]);
+
 		const handleSelectChange = React.useCallback(
 			(item: TreeDataItem | undefined) => {
 				setSelectedItemId(item?.id);

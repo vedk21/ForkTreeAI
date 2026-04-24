@@ -33,13 +33,17 @@ interface ChatHistoryListProps {
 	onSelect: (id: string) => void;
 	data: ChatTreeItem[];
 	isLoading?: boolean;
+	isCreating?: boolean;
+	onCreateClick: () => void;
 }
 
 export const ChatHistoryList = ({
 	selectedId,
 	onSelect,
 	data,
-	isLoading
+	isLoading,
+	isCreating,
+	onCreateClick
 }: ChatHistoryListProps) => {
 	const [searchQuery, setSearchQuery] = useState('');
 
@@ -96,6 +100,7 @@ export const ChatHistoryList = ({
 								size="icon"
 								variant="ghost"
 								className="h-8 w-8 bg-primary/75 text-primary-foreground/75 hover:bg-primary hover:text-primary-foreground rounded-xl transition-colors"
+								onClick={onCreateClick}
 							>
 								<Plus className="h-4 w-4" />
 							</Button>
@@ -275,6 +280,15 @@ export const ChatHistoryList = ({
 								)}
 							</div>
 						) : null}
+
+						{isCreating && (
+							<div className="flex items-center gap-2 py-2 px-3 mt-1 mx-1 rounded-lg bg-muted/40 animate-pulse border border-border/50">
+								<MessageSquare className="h-4 w-4 text-muted-foreground shrink-0" />
+								<div className="flex flex-col gap-1.5 w-full">
+									<Skeleton className="h-3 w-2/3" />
+								</div>
+							</div>
+						)}
 					</div>
 				</SidebarContent>
 			</Sidebar>
