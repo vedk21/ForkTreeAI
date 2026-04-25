@@ -28,6 +28,7 @@ export const ChatLayout = () => {
 	const [isLoadingMessages, setIsLoadingMessages] = useState<boolean>(false);
 	const [isCreateModalOpen, setIsCreateModalOpen] = useState<boolean>(false);
 	const [isCreatingItem, setIsCreatingItem] = useState<boolean>(false);
+	const [sendingChatId, setSendingChatId] = useState<string | null>(null);
 
 	// 1.5 Fetch Tree View Data
 	useEffect(() => {
@@ -148,6 +149,77 @@ export const ChatLayout = () => {
 		loadMessages();
 	}, [currentChat, parentChat]);
 
+	const handleSendMessage = async (
+		chat: ChatTreeItem | undefined,
+		content: string,
+		isParentPanel: boolean,
+		model: string
+	) => {
+		if (!chat || !chat.conversation_id || !chat.id) return;
+
+		const targetMessages = isParentPanel ? parentMessages : currentMessages;
+		const setTargetMessages = isParentPanel
+			? setParentMessages
+			: setCurrentMessages;
+
+		const lastMessage = targetMessages[targetMessages.length - 1];
+		const parentId = lastMessage ? lastMessage._id : null;
+
+		// Optimistically add the user message for instant feedback
+		const optimisticUserMsg: ChatMessage = {
+			_id: 'temp-' + Date.now(),
+			role: 'user',
+			content,
+			created_at: new Date().toISOString()
+		};
+
+		setTargetMessages((prev) => [...prev, optimisticUserMsg]);
+		setSendingChatId(chat.id);
+
+		try {
+			const res = await fetch(
+				`http://localhost:3001/conversations/${chat.conversation_id}/messages`,
+				{
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({
+						content,
+						parent_id: parentId,
+						current_branch_id: chat.id,
+						force_new_branch: false,
+						metadata: { model }
+					})
+				}
+			);
+
+			if (!res.ok) throw new Error('Failed to send message');
+
+			const newMessages = (await res.json()) as Message[];
+			const formattedNewMsgs: ChatMessage[] = newMessages.map((msg) => ({
+				content: msg.content,
+				created_at: msg.created_at,
+				role: msg.role,
+				_id: msg.id || msg._id || ''
+			}));
+
+			// Replace the optimistic user message and append the actual AI response
+			setTargetMessages((prev) => {
+				const filtered = prev.filter((m) => m._id !== optimisticUserMsg._id);
+				const updated = [...filtered, ...formattedNewMsgs];
+				messagesCache.current[chat.id] = updated;
+				return updated;
+			});
+		} catch (error) {
+			console.error('Failed to send message:', error);
+			// Revert optimistic user message on error
+			setTargetMessages((prev) =>
+				prev.filter((m) => m._id !== optimisticUserMsg._id)
+			);
+		} finally {
+			setSendingChatId(null);
+		}
+	};
+
 	return (
 		<>
 			<SidebarProvider>
@@ -177,6 +249,10 @@ export const ChatLayout = () => {
 									isLeaf={false}
 									messages={parentMessages}
 									isLoading={isLoadingMessages}
+									isSending={sendingChatId === parentChat.id}
+									onSendMessage={(content, model) =>
+										handleSendMessage(parentChat, content, true, model)
+									}
 								/>
 							</ResizablePanel>
 
@@ -194,6 +270,10 @@ export const ChatLayout = () => {
 									isLeaf={isCurrentLeaf}
 									messages={currentMessages} // dynamically passed
 									isLoading={isLoadingMessages}
+									isSending={sendingChatId === currentChat?.id}
+									onSendMessage={(content, model) =>
+										handleSendMessage(currentChat, content, false, model)
+									}
 								/>
 							</ResizablePanel>
 						</ResizablePanelGroup>
@@ -204,6 +284,10 @@ export const ChatLayout = () => {
 							isLeaf={isCurrentLeaf}
 							messages={currentMessages} // dynamically passed
 							isLoading={isLoadingMessages}
+							isSending={sendingChatId === currentChat?.id}
+							onSendMessage={(content, model) =>
+								handleSendMessage(currentChat, content, false, model)
+							}
 						/>
 					)}
 				</SidebarInset>

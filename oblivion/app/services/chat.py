@@ -26,13 +26,17 @@ async def create_conversation(request: ConversationRequest) -> TreeViewResponse:
     }
     result = await db.conversations.insert_one(doc)
     # Create new message using request.content
-    result = await process_new_message(
+    new_messages = await process_new_message(
         str(result.inserted_id),
         MessageRequest(content=request.content, new_branch_name=request.title),
     )
 
     # Get branch details for this new conversation_id
-    branch_result = await db.branches.find_one({"conversation_id": str(result.conversation_id)})
+    if len(new_messages) != 2:
+        raise HTTPException(status_code=500, detail="Error in creating conversation")
+    branch_result = await db.branches.find_one(
+        {"conversation_id": str(new_messages[0].conversation_id)}
+    )
 
     if branch_result is None:
         raise HTTPException(status_code=404, detail="Branch not found")
@@ -54,11 +58,11 @@ async def create_conversation(request: ConversationRequest) -> TreeViewResponse:
     )
 
 
-async def process_new_message(conv_id: str, request: MessageRequest) -> MessageResponse:
+async def process_new_message(conv_id: str, request: MessageRequest) -> list[MessageResponse]:
     """Orchestrates the flow of saving messages, fetching AI context, and updating branches."""
 
     # 1. Save User Message
-    user_msg_id, _ = await _save_message(
+    user_msg_id, user_msg_doc = await _save_message(
         conv_id=conv_id,
         parent_id=request.parent_id,
         role="user",
@@ -85,7 +89,7 @@ async def process_new_message(conv_id: str, request: MessageRequest) -> MessageR
 
     # Clean up the raw MongoDB _id before returning the Pydantic-compatible dict
     ai_msg_doc.pop("_id", None)
-    return MessageResponse(**ai_msg_doc)
+    return [MessageResponse(**user_msg_doc), MessageResponse(**ai_msg_doc)]
 
 
 async def get_all_messages(conv_id: str) -> list[MessageResponse]:

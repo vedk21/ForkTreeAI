@@ -22,7 +22,7 @@ async def get_branch_path(leaf_message_id: str | None) -> list[MessageResponse]:
         if not msg:
             break
         msg["id"] = str(msg.pop("_id"))
-        chain.insert(0, msg)
+        chain.insert(0, MessageResponse(**msg))
         current_id = msg.get("parent_id")
 
     return chain

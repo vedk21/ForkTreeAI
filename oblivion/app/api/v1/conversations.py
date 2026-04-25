@@ -20,8 +20,8 @@ async def create_conversation(request: ConversationRequest) -> TreeViewResponse:
     return await chat_service.create_conversation(request)
 
 
-@router.post("/{conv_id}/messages", response_model=MessageResponse)
-async def send_message(conv_id: str, request: MessageRequest) -> MessageResponse:
+@router.post("/{conv_id}/messages", response_model=list[MessageResponse])
+async def send_message(conv_id: str, request: MessageRequest) -> list[MessageResponse]:
     return await chat_service.process_new_message(conv_id, request)
 
 
