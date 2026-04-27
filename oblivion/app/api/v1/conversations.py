@@ -7,6 +7,7 @@ from app.models.chat import (
     MessageRequest,
     MessageResponse,
     MessageUpdate,
+    TreeMessageResponse,
     TreeViewResponse,
 )
 from app.services import chat as chat_service
@@ -15,13 +16,13 @@ from app.services.message import get_branch_path
 router = APIRouter(prefix="/conversations", tags=["Conversations"])
 
 
-@router.post("", response_model=TreeViewResponse)
-async def create_conversation(request: ConversationRequest) -> TreeViewResponse:
+@router.post("", response_model=TreeMessageResponse)
+async def create_conversation(request: ConversationRequest) -> TreeMessageResponse:
     return await chat_service.create_conversation(request)
 
 
-@router.post("/{conv_id}/messages", response_model=list[MessageResponse])
-async def send_message(conv_id: str, request: MessageRequest) -> list[MessageResponse]:
+@router.post("/{conv_id}/messages", response_model=TreeMessageResponse)
+async def send_message(conv_id: str, request: MessageRequest) -> TreeMessageResponse:
     return await chat_service.process_new_message(conv_id, request)
 
 

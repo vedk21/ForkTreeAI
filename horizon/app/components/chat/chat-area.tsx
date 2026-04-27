@@ -457,7 +457,7 @@ export const ChatArea = ({
 
 							<div className="flex items-center gap-1">
 								<Select value={selectedModel} onValueChange={setSelectedModel}>
-									<SelectTrigger className="h-8 w-45 bg-transparent text-[0.8rem] font-medium text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors border-0">
+									<SelectTrigger className="h-8 w-fit min-w-32.5 max-w-55 bg-transparent text-[0.8rem] font-medium text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors border-0">
 										<SelectValue placeholder="Select Model">
 											{MODEL_NAMES[selectedModel] || 'Select Model'}
 										</SelectValue>

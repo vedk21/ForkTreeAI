@@ -55,3 +55,8 @@ class TreeViewResponse(BaseModel):
     created_at: datetime
     updated_at: datetime | None
     children: list["TreeViewResponse"] = []
+
+
+class TreeMessageResponse(BaseModel):
+    messages: list[MessageResponse]
+    tree: TreeViewResponse

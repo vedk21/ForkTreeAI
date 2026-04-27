@@ -12,12 +12,13 @@ from app.models.chat import (
     MessageRequest,
     MessageResponse,
     MessageUpdate,
+    TreeMessageResponse,
     TreeViewResponse,
 )
 from app.services.message import _generate_ai_content, _save_message, _update_branch_pointers
 
 
-async def create_conversation(request: ConversationRequest) -> TreeViewResponse:
+async def create_conversation(request: ConversationRequest) -> TreeMessageResponse:
     doc = {
         "title": request.title,
         "created_at": datetime.now(UTC),
@@ -26,39 +27,15 @@ async def create_conversation(request: ConversationRequest) -> TreeViewResponse:
     }
     result = await db.conversations.insert_one(doc)
     # Create new message using request.content
-    new_messages = await process_new_message(
+    response: TreeMessageResponse = await process_new_message(
         str(result.inserted_id),
         MessageRequest(content=request.content, new_branch_name=request.title),
     )
 
-    # Get branch details for this new conversation_id
-    if len(new_messages) != 2:
-        raise HTTPException(status_code=500, detail="Error in creating conversation")
-    branch_result = await db.branches.find_one(
-        {"conversation_id": str(new_messages[0].conversation_id)}
-    )
-
-    if branch_result is None:
-        raise HTTPException(status_code=404, detail="Branch not found")
-
-    branch_result = cast(dict[str, Any], branch_result)
-    branch_result["id"] = str(branch_result.pop("_id"))
-
-    # Wait before sending respose
-    await asyncio.sleep(5)
-
-    return TreeViewResponse(
-        id=branch_result.get("id"),
-        conversation_id=str(branch_result.get("conversation_id")),
-        name_of_branch=request.title or "Main Branch",
-        branch_id=branch_result.get("id"),
-        created_at=branch_result.get("created_at"),
-        updated_at=None,
-        children=[],
-    )
+    return response
 
 
-async def process_new_message(conv_id: str, request: MessageRequest) -> list[MessageResponse]:
+async def process_new_message(conv_id: str, request: MessageRequest) -> TreeMessageResponse:
     """Orchestrates the flow of saving messages, fetching AI context, and updating branches."""
 
     # 1. Save User Message
@@ -85,11 +62,15 @@ async def process_new_message(conv_id: str, request: MessageRequest) -> list[Mes
     )
 
     # 4. Handle Branch Pointers
-    await _update_branch_pointers(conv_id, request, ai_msg_id)
+    updated_branch_tree = await _update_branch_pointers(conv_id, request, ai_msg_id)
 
     # Clean up the raw MongoDB _id before returning the Pydantic-compatible dict
     ai_msg_doc.pop("_id", None)
-    return [MessageResponse(**user_msg_doc), MessageResponse(**ai_msg_doc)]
+
+    return TreeMessageResponse(
+        messages=[MessageResponse(**user_msg_doc), MessageResponse(**ai_msg_doc)],
+        tree=updated_branch_tree,
+    )
 
 
 async def get_all_messages(conv_id: str) -> list[MessageResponse]:

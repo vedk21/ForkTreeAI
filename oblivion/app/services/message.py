@@ -6,7 +6,7 @@ from fastapi import HTTPException
 
 from app.core.config import settings
 from app.core.database import db
-from app.models.chat import MessageRequest, MessageResponse
+from app.models.chat import MessageRequest, MessageResponse, TreeViewResponse
 from app.services.gemini import get_ai_response
 
 
@@ -69,11 +69,46 @@ async def _generate_ai_content(parent_id: str | None, user_content: str, user_ms
         raise HTTPException(status_code=500, detail=f"AI Error: {str(e)}") from e
 
 
-async def _update_branch_pointers(conv_id: str, request: MessageRequest, ai_msg_id: str) -> None:
+async def _get_branch_subtree(conv_id: str, target_branch_id: str) -> TreeViewResponse | None:
+    """Fetches all branches for a conversation and builds the subtree starting from target_branch_id."""
+    branches = await db.branches.find({"conversation_id": conv_id}).to_list(length=None)
+
+    branch_map = {}
+    for b in branches:
+        b_id = str(b["_id"])
+        branch_map[b_id] = {
+            "id": b_id,
+            "conversation_id": str(b.get("conversation_id")),
+            "name_of_branch": b.get("name"),
+            "branch_id": b_id,
+            "created_at": b.get("created_at"),
+            "updated_at": b.get("updated_at"),
+            "children": [],
+            "parent_branch_id": str(b.get("parent_branch_id"))
+            if b.get("parent_branch_id")
+            else None,
+        }
+
+    # Connect children to parents
+    for _, b_data in branch_map.items():
+        parent_id = b_data.pop("parent_branch_id", None)
+        if parent_id and parent_id in branch_map:
+            branch_map[parent_id]["children"].append(b_data)
+
+    target_data = branch_map.get(target_branch_id)
+    if not target_data:
+        return None
+
+    return TreeViewResponse(**target_data)
+
+
+async def _update_branch_pointers(
+    conv_id: str, request: MessageRequest, ai_msg_id: str
+) -> TreeViewResponse | None:
 
     # IF FIRST MESSAGE: Create the Root Branch
     if not request.current_branch_id and not request.parent_id:
-        await db.branches.insert_one(
+        result = await db.branches.insert_one(
             {
                 "conversation_id": conv_id,
                 "name": request.new_branch_name or "Main Branch",
@@ -83,11 +118,11 @@ async def _update_branch_pointers(conv_id: str, request: MessageRequest, ai_msg_
                 "created_at": datetime.now(UTC),
             }
         )
-        return
+        return await _get_branch_subtree(conv_id, str(result.inserted_id))
 
     current_branch = await db.branches.find_one({"_id": ObjectId(request.current_branch_id)})
     if not current_branch:
-        return
+        return None
 
     old_head_id = current_branch.get("head_message_id")
     current_branch_str_id = str(current_branch["_id"])
@@ -96,7 +131,7 @@ async def _update_branch_pointers(conv_id: str, request: MessageRequest, ai_msg_
         # SCENARIO A: Forking from an older message
 
         # 1. Preserve the old trail in a NEW branch
-        await db.branches.insert_one(
+        old_trail_result = await db.branches.insert_one(
             {
                 "conversation_id": conv_id,
                 "name": request.og_trail_branch_name
@@ -107,6 +142,8 @@ async def _update_branch_pointers(conv_id: str, request: MessageRequest, ai_msg_
                 "created_at": datetime.now(UTC),
             }
         )
+
+        old_trail_str_id = str(old_trail_result.inserted_id)
 
         # 2. Put the new fork in a NEW branch
         await db.branches.insert_one(
@@ -126,6 +163,32 @@ async def _update_branch_pointers(conv_id: str, request: MessageRequest, ai_msg_
             {"$set": {"head_message_id": request.parent_id}},
         )
 
+        # 4. --- THE ORPHAN FIX: Re-parent branches on the Old Trail ---
+
+        # Walk backwards from the old head to the fork point to find the "Tail"
+        tail_msg_ids = []
+        curr_msg_id = old_head_id
+
+        while curr_msg_id and curr_msg_id != request.parent_id:
+            tail_msg_ids.append(curr_msg_id)
+            msg = await db.messages.find_one({"_id": ObjectId(curr_msg_id)})
+            if not msg:
+                break
+            curr_msg_id = msg.get("parent_id")
+
+        # If we found messages in the tail, find any branches attached to them and re-parent them
+        if tail_msg_ids:
+            await db.branches.update_many(
+                {
+                    "parent_branch_id": current_branch_str_id,
+                    "fork_message_id": {"$in": tail_msg_ids},
+                },
+                {"$set": {"parent_branch_id": old_trail_str_id}},
+            )
+
+        return await _get_branch_subtree(conv_id, current_branch_str_id)
+        # -------------------------------------------------------------
+
     elif request.force_new_branch:
         # SCENARIO B: Forking at the very end of the line
         await db.branches.insert_one(
@@ -138,9 +201,11 @@ async def _update_branch_pointers(conv_id: str, request: MessageRequest, ai_msg_
                 "created_at": datetime.now(UTC),
             }
         )
+        return await _get_branch_subtree(conv_id, current_branch_str_id)
 
     else:
         # SCENARIO C: Normal linear chatting
         await db.branches.update_one(
             {"_id": ObjectId(request.current_branch_id)}, {"$set": {"head_message_id": ai_msg_id}}
         )
+        return await _get_branch_subtree(conv_id, current_branch_str_id)
