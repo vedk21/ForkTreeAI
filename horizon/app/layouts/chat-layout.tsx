@@ -30,6 +30,20 @@ export const ChatLayout = () => {
 	const [isCreatingItem, setIsCreatingItem] = useState<boolean>(false);
 	const [sendingChatId, setSendingChatId] = useState<string | null>(null);
 
+	// Helper to map backend TreeViewNode to frontend ChatTreeItem
+	const mapNode = (node: TreeViewNode): ChatTreeItem => ({
+		id: node.branch_id,
+		name: node.name_of_branch,
+		time: node.created_at
+			? new Date(node.created_at).toLocaleDateString(undefined, {
+					month: 'short',
+					day: 'numeric'
+				})
+			: undefined,
+		conversation_id: node.conversation_id,
+		children: node.children ? node.children.map(mapNode) : []
+	});
+
 	// 1.5 Fetch Tree View Data
 	useEffect(() => {
 		const fetchTree = async () => {
@@ -40,20 +54,6 @@ export const ChatLayout = () => {
 					'http://localhost:3001/conversations/tree-view'
 				);
 				const data = await res.json();
-
-				// Map the backend structure to the ChatTreeItem expected structure
-				const mapNode = (node: TreeViewNode): ChatTreeItem => ({
-					id: node.branch_id,
-					name: node.name_of_branch,
-					time: node.created_at
-						? new Date(node.created_at).toLocaleDateString(undefined, {
-								month: 'short',
-								day: 'numeric'
-							})
-						: undefined,
-					conversation_id: node.conversation_id,
-					children: node.children ? node.children.map(mapNode) : []
-				});
 
 				const formattedData = data.map(mapNode);
 				setTreeData(formattedData);
@@ -194,13 +194,16 @@ export const ChatLayout = () => {
 
 			if (!res.ok) throw new Error('Failed to send message');
 
-			const newMessages = (await res.json()) as Message[];
-			const formattedNewMsgs: ChatMessage[] = newMessages.map((msg) => ({
-				content: msg.content,
-				created_at: msg.created_at,
-				role: msg.role,
-				_id: msg.id || msg._id || ''
-			}));
+			const resData = await res.json();
+			const newMessages = resData.messages as Message[];
+			const formattedNewMsgs: ChatMessage[] = newMessages.map(
+				(msg: Message) => ({
+					content: msg.content,
+					created_at: msg.created_at,
+					role: msg.role,
+					_id: msg.id || msg._id || ''
+				})
+			);
 
 			// Replace the optimistic user message and append the actual AI response
 			setTargetMessages((prev) => {
@@ -209,6 +212,25 @@ export const ChatLayout = () => {
 				messagesCache.current[chat.id] = updated;
 				return updated;
 			});
+
+			// Merge the updated branch subtree back into our main tree state
+			if (resData.tree) {
+				const updatedSubTree = mapNode(resData.tree);
+				setTreeData((prev) => {
+					const updateTree = (nodes: ChatTreeItem[]): ChatTreeItem[] => {
+						return nodes.map((node) => {
+							if (node.id === updatedSubTree.id) {
+								return updatedSubTree;
+							}
+							if (node.children && node.children.length > 0) {
+								return { ...node, children: updateTree(node.children) };
+							}
+							return node;
+						});
+					};
+					return updateTree(prev);
+				});
+			}
 		} catch (error) {
 			console.error('Failed to send message:', error);
 			// Revert optimistic user message on error
@@ -296,7 +318,18 @@ export const ChatLayout = () => {
 			<CreateConversation
 				open={isCreateModalOpen}
 				onClose={() => setIsCreateModalOpen(false)}
-				onCreated={(newItem) => {
+				onCreated={(newItem, newMessages) => {
+					// Pre-populate the cache with the received messages so we don't fetch them again
+					const formattedMsgs: ChatMessage[] = newMessages.map(
+						(msg: ChatMessage) => ({
+							content: msg.content,
+							created_at: msg.created_at,
+							role: msg.role,
+							_id: msg._id || ''
+						})
+					);
+					messagesCache.current[newItem.id] = formattedMsgs;
+
 					setTreeData((prev) => [...prev, newItem]);
 					setSelectedId(newItem.id);
 				}}

@@ -55,8 +55,10 @@ import {
 	TooltipTrigger
 } from '@/components/ui/tooltip';
 
+/** optional keys id or _id  */
 export interface ChatMessage {
 	_id: string;
+	id?: string;
 	role: 'user' | 'model';
 	content: string;
 	created_at: string | Date;

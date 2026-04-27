@@ -32,6 +32,8 @@ async def create_conversation(request: ConversationRequest) -> TreeMessageRespon
         MessageRequest(content=request.content, new_branch_name=request.title),
     )
 
+    await asyncio.sleep(3)  # Simulate network latency
+
     return response
 
 

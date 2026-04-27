@@ -1,6 +1,7 @@
 import { X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
+import type { ChatMessage } from '@/components/chat/chat-area';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { type ChatTreeItem } from '@/lib/chat/helper';
@@ -8,7 +9,7 @@ import { type ChatTreeItem } from '@/lib/chat/helper';
 interface CreateConversationProps {
 	open: boolean;
 	onClose: () => void;
-	onCreated: (item: ChatTreeItem) => void;
+	onCreated: (item: ChatTreeItem, messages: ChatMessage[]) => void;
 	onCreatingChange: (isCreating: boolean) => void;
 }
 
@@ -48,22 +49,31 @@ export const CreateConversation = ({
 
 			if (!res.ok) throw new Error('Failed to create conversation');
 
-			const responseData = await res.json();
+			const resData = await res.json();
+			const treeData = resData.tree;
 
 			const newNode: ChatTreeItem = {
-				id: responseData.branch_id,
-				name: responseData.name_of_branch,
-				time: responseData.created_at
-					? new Date(responseData.created_at).toLocaleDateString(undefined, {
+				id: treeData.id || treeData.branch_id,
+				name: treeData.name_of_branch,
+				time: treeData.created_at
+					? new Date(treeData.created_at).toLocaleDateString(undefined, {
 							month: 'short',
 							day: 'numeric'
 						})
 					: undefined,
-				conversation_id: responseData.conversation_id,
+				conversation_id: treeData.conversation_id,
 				children: []
 			};
 
-			onCreated(newNode);
+			onCreated(
+				newNode,
+				resData.messages.map((msg: ChatMessage) => ({
+					content: msg.content,
+					created_at: msg.created_at,
+					role: msg.role,
+					_id: msg.id || msg._id || ''
+				}))
+			);
 			onClose();
 		} catch (error) {
 			console.error('Error creating conversation:', error);
