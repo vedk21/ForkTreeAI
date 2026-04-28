@@ -5,6 +5,7 @@ import {
 	Bot,
 	ChevronDown,
 	ChevronUp,
+	GitBranch,
 	Mic,
 	Palette,
 	Paperclip,
@@ -73,6 +74,11 @@ interface ChatAreaProps {
 	isLoading?: boolean;
 	isSending?: boolean;
 	onSendMessage?: (content: string, model: string) => void;
+	onForkMessage?: (
+		parentId: string | null,
+		isLast: boolean,
+		model: string
+	) => void;
 }
 
 const formatTime = (dateString: string | Date) => {
@@ -107,7 +113,8 @@ export const ChatArea = ({
 	messages = [],
 	isLoading = false,
 	isSending = false,
-	onSendMessage
+	onSendMessage,
+	onForkMessage
 }: ChatAreaProps) => {
 	// 3. Set up the state to track the active syntax theme
 	const [activeSyntaxTheme, setActiveSyntaxTheme] =
@@ -321,13 +328,40 @@ export const ChatArea = ({
 									</Avatar>
 
 									<div className="flex flex-col gap-1.5 mt-1 w-full overflow-hidden">
-										<div className="flex items-center gap-2">
-											<span className="font-semibold text-[0.95rem] text-foreground">
-												{msg.role === 'user' ? 'You' : 'ForkTreeAI'}
-											</span>
-											<span className="text-xs text-muted-foreground font-medium">
-												{formatTime(msg.created_at)}
-											</span>
+										<div className="flex items-center justify-between gap-2">
+											<div className="flex items-center justify-start gap-2">
+												<span className="font-bold text-base text-secondary">
+													{msg.role === 'user' ? 'You' : 'ForkTreeAI'}
+												</span>
+												<span className="text-sm text-muted-foreground/40 font-medium">
+													{formatTime(msg.created_at)}
+												</span>
+											</div>
+											{msg.role === 'user' && (
+												<div className="flex items-center justify-end">
+													<Button
+														variant="ghost"
+														size="sm"
+														className="h-6 py-4 px-2 text-sm font-medium ml-2 text-primary hover:text-primary hover:bg-primary/30 rounded-md"
+														onClick={() => {
+															const msgIndex = messages.findIndex(
+																(m) => m._id === msg._id
+															);
+															const parentId =
+																msgIndex > 0
+																	? messages[msgIndex + 1]._id
+																	: null;
+															const isLast =
+																userMessages[userMessages.length - 1]._id ===
+																msg._id;
+															onForkMessage?.(parentId, isLast, selectedModel);
+														}}
+													>
+														<GitBranch className="h-3 w-3 mr-1" />
+														Start New Path
+													</Button>
+												</div>
+											)}
 										</div>
 
 										{msg.role === 'user' ? (

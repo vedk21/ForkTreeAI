@@ -1,28 +1,39 @@
 import { X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 
-import type { ChatMessage } from '@/components/chat/chat-area';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Kbd } from '@/components/ui/kbd';
-import { type ChatTreeItem } from '@/lib/chat/helper';
+import type { TreeViewNode } from '@/lib/chat/helper';
 
-interface CreateConversationProps {
+interface CreateBranchProps {
 	open: boolean;
 	onClose: () => void;
-	onCreated: (item: ChatTreeItem, messages: ChatMessage[]) => void;
-	onCreatingChange: (isCreating: boolean) => void;
+	onCreated: (
+		rawTreeData: TreeViewNode,
+		messages: Record<string, unknown>[]
+	) => void;
+	conversationId: string;
+	currentBranchId: string;
+	parentId: string | null;
+	isLast: boolean;
+	model: string;
 }
 
-export const CreateConversation = ({
+export const CreateBranch = ({
 	open,
 	onClose,
 	onCreated,
-	onCreatingChange
-}: CreateConversationProps) => {
+	conversationId,
+	currentBranchId,
+	parentId,
+	isLast,
+	model
+}: CreateBranchProps) => {
 	const [isCreating, setIsCreating] = useState(false);
 	const [formData, setFormData] = useState({
-		name: '',
+		newBranchName: '',
+		ogTrailName: '',
 		question: ''
 	});
 	const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -30,7 +41,7 @@ export const CreateConversation = ({
 	// Reset form when modal closes
 	useEffect(() => {
 		if (!open) {
-			setFormData({ name: '', question: '' });
+			setFormData({ newBranchName: '', ogTrailName: '', question: '' });
 			setIsCreating(false);
 		}
 	}, [open]);
@@ -46,7 +57,11 @@ export const CreateConversation = ({
 	const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
 		if (e.key === 'Enter' && !e.shiftKey) {
 			e.preventDefault();
-			if (formData.name.trim() && formData.question.trim()) {
+			if (
+				formData.newBranchName.trim() &&
+				formData.question.trim() &&
+				(isLast || formData.ogTrailName.trim())
+			) {
 				handleCreate(e as unknown as React.FormEvent);
 			}
 		}
@@ -55,50 +70,41 @@ export const CreateConversation = ({
 	const handleCreate = async (e: React.FormEvent) => {
 		e.preventDefault();
 		setIsCreating(true);
-		onCreatingChange(true);
 		try {
-			const res = await fetch('http://localhost:3001/conversations', {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({
-					title: formData.name,
-					content: formData.question
-				})
-			});
-
-			if (!res.ok) throw new Error('Failed to create conversation');
-
-			const resData = await res.json();
-			const treeData = resData.tree;
-
-			const newNode: ChatTreeItem = {
-				id: treeData.id || treeData.branch_id,
-				name: treeData.name_of_branch,
-				time: treeData.created_at
-					? new Date(treeData.created_at).toLocaleDateString(undefined, {
-							month: 'short',
-							day: 'numeric'
-						})
-					: undefined,
-				conversation_id: treeData.conversation_id,
-				children: []
+			const body: Record<
+				string,
+				string | boolean | Record<string, string> | null
+			> = {
+				content: formData.question,
+				parent_id: parentId,
+				current_branch_id: currentBranchId,
+				force_new_branch: true,
+				new_branch_name: formData.newBranchName,
+				metadata: { model }
 			};
 
-			onCreated(
-				newNode,
-				resData.messages.map((msg: ChatMessage) => ({
-					content: msg.content,
-					created_at: msg.created_at,
-					role: msg.role,
-					_id: msg.id || msg._id || ''
-				}))
+			if (!isLast) {
+				body.og_trail_branch_name = formData.ogTrailName;
+			}
+
+			const res = await fetch(
+				`http://localhost:3001/conversations/${conversationId}/messages`,
+				{
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify(body)
+				}
 			);
+
+			if (!res.ok) throw new Error('Failed to create branch');
+
+			const resData = await res.json();
+			onCreated(resData.tree, resData.messages);
 			onClose();
 		} catch (error) {
-			console.error('Error creating conversation:', error);
+			console.error('Error creating branch:', error);
 		} finally {
 			setIsCreating(false);
-			onCreatingChange(false);
 		}
 	};
 
@@ -119,27 +125,45 @@ export const CreateConversation = ({
 
 				<div className="mb-6 space-y-1 pr-8">
 					<h2 className="text-lg font-semibold tracking-tight text-foreground">
-						New Conversation
+						Create Branch
 					</h2>
 					<p className="text-sm text-muted-foreground">
-						Start a new branch of thought.
+						Fork this conversation into a new branch.
 					</p>
 				</div>
 
 				<form onSubmit={handleCreate} className="flex flex-col gap-4">
+					{!isLast && (
+						<div className="flex flex-col gap-2">
+							<label htmlFor="ogTrailName" className="text-sm font-semibold">
+								Original Trail Branch Name*
+							</label>
+							<Input
+								id="ogTrailName"
+								required
+								disabled={isCreating}
+								value={formData.ogTrailName}
+								onChange={(e) =>
+									setFormData({ ...formData, ogTrailName: e.target.value })
+								}
+								placeholder="Name for the existing path"
+								className="h-10"
+							/>
+						</div>
+					)}
 					<div className="flex flex-col gap-2">
-						<label htmlFor="name" className="text-sm font-semibold">
-							Name*
+						<label htmlFor="newBranchName" className="text-sm font-semibold">
+							New Branch Name*
 						</label>
 						<Input
-							id="name"
+							id="newBranchName"
 							required
 							disabled={isCreating}
-							value={formData.name}
+							value={formData.newBranchName}
 							onChange={(e) =>
-								setFormData({ ...formData, name: e.target.value })
+								setFormData({ ...formData, newBranchName: e.target.value })
 							}
-							placeholder="Displayed as the root branch in the sidebar"
+							placeholder="Name for the new path"
 							className="h-10"
 						/>
 					</div>
@@ -157,7 +181,7 @@ export const CreateConversation = ({
 								setFormData({ ...formData, question: e.target.value })
 							}
 							onKeyDown={handleKeyDown}
-							placeholder="Ask your question here..."
+							placeholder="Ask your alternative question here..."
 							rows={1}
 							className="w-full min-w-0 rounded-lg border border-input bg-transparent px-3 py-2 text-base transition-colors outline-none placeholder:text-muted-foreground/40 focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:cursor-not-allowed disabled:bg-input/50 disabled:opacity-50 md:text-sm dark:bg-input/30 dark:disabled:bg-input/80 resize-none overflow-y-auto scrollbar-thin min-h-20 max-h-35"
 						/>
@@ -175,7 +199,7 @@ export const CreateConversation = ({
 							Cancel
 						</Button>
 						<Button type="submit" disabled={isCreating} className="min-w-35">
-							{isCreating ? 'Creating...' : 'Create Conversation'}
+							{isCreating ? 'Creating...' : 'Create Branch'}
 						</Button>
 					</div>
 				</form>

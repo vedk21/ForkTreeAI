@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 
 import { ChatArea, type ChatMessage } from '@/components/chat/chat-area';
 import { ChatHistoryList } from '@/components/chat/chat-history-list';
+import { CreateBranch } from '@/components/chat/create-branch';
 import { CreateConversation } from '@/components/chat/create-conversation';
 import {
 	ResizableHandle,
@@ -29,6 +30,14 @@ export const ChatLayout = () => {
 	const [isCreateModalOpen, setIsCreateModalOpen] = useState<boolean>(false);
 	const [isCreatingItem, setIsCreatingItem] = useState<boolean>(false);
 	const [sendingChatId, setSendingChatId] = useState<string | null>(null);
+
+	const [branchModalData, setBranchModalData] = useState<{
+		isOpen: boolean;
+		chat: ChatTreeItem;
+		parentId: string | null;
+		isLast: boolean;
+		model: string;
+	} | null>(null);
 
 	// Helper to map backend TreeViewNode to frontend ChatTreeItem
 	const mapNode = (node: TreeViewNode): ChatTreeItem => ({
@@ -275,6 +284,17 @@ export const ChatLayout = () => {
 									onSendMessage={(content, model) =>
 										handleSendMessage(parentChat, content, true, model)
 									}
+									onForkMessage={(parentId, isLast, model) => {
+										if (parentChat) {
+											setBranchModalData({
+												isOpen: true,
+												chat: parentChat,
+												parentId,
+												isLast,
+												model
+											});
+										}
+									}}
 								/>
 							</ResizablePanel>
 
@@ -296,6 +316,17 @@ export const ChatLayout = () => {
 									onSendMessage={(content, model) =>
 										handleSendMessage(currentChat, content, false, model)
 									}
+									onForkMessage={(parentId, isLast, model) => {
+										if (currentChat) {
+											setBranchModalData({
+												isOpen: true,
+												chat: currentChat,
+												parentId,
+												isLast,
+												model
+											});
+										}
+									}}
 								/>
 							</ResizablePanel>
 						</ResizablePanelGroup>
@@ -310,6 +341,17 @@ export const ChatLayout = () => {
 							onSendMessage={(content, model) =>
 								handleSendMessage(currentChat, content, false, model)
 							}
+							onForkMessage={(parentId, isLast, model) => {
+								if (currentChat) {
+									setBranchModalData({
+										isOpen: true,
+										chat: currentChat,
+										parentId,
+										isLast,
+										model
+									});
+								}
+							}}
 						/>
 					)}
 				</SidebarInset>
@@ -334,6 +376,33 @@ export const ChatLayout = () => {
 					setSelectedId(newItem.id);
 				}}
 				onCreatingChange={setIsCreatingItem}
+			/>
+
+			<CreateBranch
+				open={branchModalData?.isOpen || false}
+				onClose={() => setBranchModalData(null)}
+				onCreated={(rawTreeData) => {
+					const updatedSubTree = mapNode(rawTreeData as TreeViewNode);
+					setTreeData((prev) => {
+						const updateTree = (nodes: ChatTreeItem[]): ChatTreeItem[] => {
+							return nodes.map((node) => {
+								if (node.id === updatedSubTree.id) {
+									return updatedSubTree;
+								}
+								if (node.children && node.children.length > 0) {
+									return { ...node, children: updateTree(node.children) };
+								}
+								return node;
+							});
+						};
+						return updateTree(prev);
+					});
+				}}
+				conversationId={branchModalData?.chat.conversation_id || ''}
+				currentBranchId={branchModalData?.chat.id || ''}
+				parentId={branchModalData?.parentId || null}
+				isLast={branchModalData?.isLast || false}
+				model={branchModalData?.model || 'gemini-2.5-flash'}
 			/>
 		</>
 	);
