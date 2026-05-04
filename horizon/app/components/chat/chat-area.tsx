@@ -14,7 +14,7 @@ import {
 	Sparkles,
 	Zap
 } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { Fragment, useEffect, useRef, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 // 1. Import all the cool themes you want to offer
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
@@ -29,6 +29,15 @@ import {
 import remarkGfm from 'remark-gfm';
 
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import {
+	Breadcrumb,
+	BreadcrumbEllipsis,
+	BreadcrumbItem,
+	BreadcrumbLink,
+	BreadcrumbList,
+	BreadcrumbPage,
+	BreadcrumbSeparator
+} from '@/components/ui/breadcrumb';
 import { Button } from '@/components/ui/button';
 import {
 	DropdownMenu,
@@ -68,6 +77,8 @@ export interface ChatMessage {
 
 interface ChatAreaProps {
 	title?: string;
+	breadcrumbs?: { id: string; name: string }[];
+	onSelectBreadcrumb?: (id: string) => void;
 	isParent?: boolean;
 	isFirstWindow?: boolean;
 	isLeaf?: boolean;
@@ -108,6 +119,8 @@ const MODEL_NAMES: Record<string, string> = {
 
 export const ChatArea = ({
 	title = 'Chat',
+	breadcrumbs = [],
+	onSelectBreadcrumb,
 	isParent = false,
 	isFirstWindow = true,
 	isLeaf = true,
@@ -198,13 +211,100 @@ export const ChatArea = ({
 		>
 			{/* Top Header */}
 			<header className="flex items-center justify-between px-6 h-18.25 border-b border-border bg-background shrink-0 min-w-0">
-				<div className="flex items-center gap-2 min-w-0 flex-1 pr-4">
+				<div className="flex items-center gap-2 min-w-0 flex-1 pr-4 overflow-hidden">
 					<SidebarTrigger
-						className={`sm:hidden ${isFirstWindow ? 'md:flex' : 'md:hidden'} justify-center items-center h-10 w-10`}
+						className={`sm:hidden ${isFirstWindow ? 'md:flex' : 'md:hidden'} justify-center items-center h-10 w-10 shrink-0`}
 					/>
-					<h1 className="text-[1.1rem] font-semibold text-foreground truncate">
-						{title}
-					</h1>
+					{breadcrumbs && breadcrumbs.length > 0 ? (
+						<Breadcrumb className="truncate">
+							<BreadcrumbList className="flex-nowrap whitespace-nowrap overflow-hidden text-ellipsis">
+								{breadcrumbs.map((crumb, idx) => {
+									const isLast = idx === breadcrumbs.length - 1;
+									const isFirst = idx === 0;
+									const isPenultimate = idx === breadcrumbs.length - 2;
+
+									const shouldShow =
+										breadcrumbs.length <= 3 ||
+										isFirst ||
+										isLast ||
+										isPenultimate;
+									const showEllipsis = breadcrumbs.length > 3 && idx === 1;
+
+									if (!shouldShow && !showEllipsis) return null;
+
+									if (showEllipsis) {
+										// Extract all the intermediate breadcrumbs that are being hidden
+										const hiddenBreadcrumbs = breadcrumbs.slice(
+											1,
+											breadcrumbs.length - 2
+										);
+										return (
+											<Fragment key={`ellipsis-${crumb.id}`}>
+												<BreadcrumbItem>
+													<DropdownMenu>
+														<DropdownMenuTrigger className="flex items-center outline-none rounded hover:bg-muted/50 transition-colors p-1">
+															<BreadcrumbEllipsis className="h-4 w-4" />
+															<span className="sr-only">Toggle menu</span>
+														</DropdownMenuTrigger>
+														<DropdownMenuContent
+															align="start"
+															className="bg-popover text-popover-foreground border-border shadow-md max-w-[200px] sm:max-w-[300px]"
+														>
+															{hiddenBreadcrumbs.map((hiddenCrumb) => (
+																<DropdownMenuItem
+																	key={hiddenCrumb.id}
+																	className="cursor-pointer truncate block w-full text-left"
+																	onClick={() =>
+																		onSelectBreadcrumb?.(hiddenCrumb.id)
+																	}
+																>
+																	{hiddenCrumb.name}
+																</DropdownMenuItem>
+															))}
+														</DropdownMenuContent>
+													</DropdownMenu>
+												</BreadcrumbItem>
+												<BreadcrumbSeparator />
+											</Fragment>
+										);
+									}
+
+									return (
+										<Fragment key={crumb.id}>
+											<BreadcrumbItem>
+												{isLast ? (
+													<BreadcrumbPage className="text-[1.05rem] font-semibold text-secondary">
+														{crumb.name}
+													</BreadcrumbPage>
+												) : (
+													<BreadcrumbLink
+														asChild
+														className="cursor-pointer"
+														onClick={(e) => {
+															e.preventDefault();
+															onSelectBreadcrumb?.(crumb.id);
+														}}
+													>
+														<span
+															className="truncate max-w-[90px] sm:max-w-[150px] hover:text-foreground transition-colors"
+															title={crumb.name}
+														>
+															{crumb.name}
+														</span>
+													</BreadcrumbLink>
+												)}
+											</BreadcrumbItem>
+											{!isLast && <BreadcrumbSeparator />}
+										</Fragment>
+									);
+								})}
+							</BreadcrumbList>
+						</Breadcrumb>
+					) : (
+						<h1 className="text-[1.1rem] font-semibold text-foreground truncate">
+							{title}
+						</h1>
+					)}
 				</div>
 
 				<div className="flex items-center gap-3 shrink-0">

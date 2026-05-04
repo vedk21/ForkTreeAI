@@ -128,7 +128,7 @@ export const ChatHistoryList = ({
 				</SidebarHeader>
 
 				<SidebarContent className="px-2 bg-sidebar hide-scrollbar pb-2">
-					<div className="w-full grow overflow-hidden">
+					<div className="w-full grow">
 						{isLoading ? (
 							<div
 								key="tree-skeleton"

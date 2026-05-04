@@ -35,6 +35,19 @@ export const CreateConversation = ({
 		}
 	}, [open]);
 
+	// Close on Escape key
+	useEffect(() => {
+		const handleEsc = (e: KeyboardEvent) => {
+			if (e.key === 'Escape') {
+				onClose();
+			}
+		};
+		if (open) {
+			document.addEventListener('keydown', handleEsc);
+		}
+		return () => document.removeEventListener('keydown', handleEsc);
+	}, [open, onClose]);
+
 	// Auto-resize textarea
 	useEffect(() => {
 		if (textareaRef.current) {
@@ -86,12 +99,11 @@ export const CreateConversation = ({
 
 			onCreated(
 				newNode,
-				resData.messages.map((msg: any) => ({
+				resData.messages.map((msg: ChatMessage) => ({
 					content: msg.content,
 					created_at: msg.created_at,
 					role: msg.role,
-					_id: msg.id || msg._id || '',
-					parent_id: msg.parent_id || null
+					_id: msg.id || msg._id || ''
 				}))
 			);
 			onClose();
@@ -129,14 +141,22 @@ export const CreateConversation = ({
 
 				<form onSubmit={handleCreate} className="flex flex-col gap-4">
 					<div className="flex flex-col gap-2">
-						<label htmlFor="name" className="text-sm font-semibold">
-							Name*
+						<label
+							htmlFor="name"
+							className="text-sm font-semibold flex items-center justify-between"
+						>
+							<span>Name*</span>
+							<span className="text-xs font-normal text-muted-foreground">
+								(Max 20 chars)
+							</span>
 						</label>
 						<Input
 							id="name"
 							required
+							autoFocus
 							disabled={isCreating}
 							value={formData.name}
+							maxLength={20}
 							onChange={(e) =>
 								setFormData({ ...formData, name: e.target.value })
 							}

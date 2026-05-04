@@ -109,6 +109,30 @@ export const ChatLayout = () => {
 	const isCurrentLeaf =
 		!currentChat?.children || currentChat.children.length === 0;
 
+	// Helper to build breadcrumb paths from root to the target chat node
+	const getBreadcrumbPath = (
+		nodes: ChatTreeItem[],
+		targetId: string,
+		currentPath: ChatTreeItem[] = []
+	): ChatTreeItem[] => {
+		for (const node of nodes) {
+			const path = [...currentPath, node];
+			if (node.id === targetId) return path;
+			if (node.children && node.children.length > 0) {
+				const found = getBreadcrumbPath(node.children, targetId, path);
+				if (found.length > 0) return found;
+			}
+		}
+		return [];
+	};
+
+	const currentBreadcrumbs = currentChat
+		? getBreadcrumbPath(treeData, currentChat.id)
+		: [];
+	const parentBreadcrumbs = parentChat
+		? getBreadcrumbPath(treeData, parentChat.id)
+		: [];
+
 	// 4. Fetch the messages dynamically based on the derived IDs
 	useEffect(() => {
 		const fetchMessages = async (
@@ -299,6 +323,8 @@ export const ChatLayout = () => {
 							<ResizablePanel defaultSize="50%" minSize="30%">
 								<ChatArea
 									title={parentChat.name}
+									breadcrumbs={parentBreadcrumbs}
+									onSelectBreadcrumb={setSelectedId}
 									isParent={true}
 									isFirstWindow={true}
 									isLeaf={false}
@@ -332,6 +358,8 @@ export const ChatLayout = () => {
 							<ResizablePanel defaultSize="50%" minSize="30%">
 								<ChatArea
 									title={currentChat?.name}
+									breadcrumbs={currentBreadcrumbs}
+									onSelectBreadcrumb={setSelectedId}
 									isFirstWindow={false}
 									isLeaf={isCurrentLeaf}
 									messages={currentMessages} // dynamically passed
@@ -358,6 +386,8 @@ export const ChatLayout = () => {
 						// NO PARENT: Render Single View
 						<ChatArea
 							title={currentChat?.name || 'Select a conversation'}
+							breadcrumbs={currentBreadcrumbs}
+							onSelectBreadcrumb={setSelectedId}
 							isLeaf={isCurrentLeaf}
 							messages={currentMessages} // dynamically passed
 							isLoading={isLoadingMessages}

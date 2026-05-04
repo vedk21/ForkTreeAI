@@ -48,6 +48,19 @@ export const CreateBranch = ({
 		}
 	}, [open]);
 
+	// Close on Escape key
+	useEffect(() => {
+		const handleEsc = (e: KeyboardEvent) => {
+			if (e.key === 'Escape') {
+				onClose();
+			}
+		};
+		if (open) {
+			document.addEventListener('keydown', handleEsc);
+		}
+		return () => document.removeEventListener('keydown', handleEsc);
+	}, [open, onClose]);
+
 	// Auto-resize textarea
 	useEffect(() => {
 		if (textareaRef.current) {
@@ -143,14 +156,22 @@ export const CreateBranch = ({
 				<form onSubmit={handleCreate} className="flex flex-col gap-4">
 					{!isLast && (
 						<div className="flex flex-col gap-2">
-							<label htmlFor="ogTrailName" className="text-sm font-semibold">
-								Original Trail Branch Name*
+							<label
+								htmlFor="ogTrailName"
+								className="text-sm font-semibold flex items-center justify-between"
+							>
+								<span>Original Trail Branch Name*</span>
+								<span className="text-xs font-normal text-muted-foreground">
+									(Max 20 chars)
+								</span>
 							</label>
 							<Input
 								id="ogTrailName"
 								required
+								autoFocus={!isLast}
 								disabled={isCreating}
 								value={formData.ogTrailName}
+								maxLength={20}
 								onChange={(e) =>
 									setFormData({ ...formData, ogTrailName: e.target.value })
 								}
@@ -160,14 +181,22 @@ export const CreateBranch = ({
 						</div>
 					)}
 					<div className="flex flex-col gap-2">
-						<label htmlFor="newBranchName" className="text-sm font-semibold">
-							New Branch Name*
+						<label
+							htmlFor="newBranchName"
+							className="text-sm font-semibold flex items-center justify-between"
+						>
+							<span>New Branch Name*</span>
+							<span className="text-xs font-normal text-muted-foreground">
+								(Max 20 chars)
+							</span>
 						</label>
 						<Input
 							id="newBranchName"
 							required
+							autoFocus={isLast}
 							disabled={isCreating}
 							value={formData.newBranchName}
+							maxLength={20}
 							onChange={(e) =>
 								setFormData({ ...formData, newBranchName: e.target.value })
 							}
