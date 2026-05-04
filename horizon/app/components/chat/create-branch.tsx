@@ -11,7 +11,9 @@ interface CreateBranchProps {
 	onClose: () => void;
 	onCreated: (
 		rawTreeData: TreeViewNode,
-		messages: Record<string, unknown>[]
+		messages: Record<string, unknown>[],
+		newBranchName: string,
+		ogTrailName?: string
 	) => void;
 	conversationId: string;
 	currentBranchId: string;
@@ -99,7 +101,12 @@ export const CreateBranch = ({
 			if (!res.ok) throw new Error('Failed to create branch');
 
 			const resData = await res.json();
-			onCreated(resData.tree, resData.messages);
+			onCreated(
+				resData.tree,
+				resData.messages,
+				formData.newBranchName,
+				formData.ogTrailName
+			);
 			onClose();
 		} catch (error) {
 			console.error('Error creating branch:', error);

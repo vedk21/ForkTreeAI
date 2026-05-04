@@ -86,11 +86,12 @@ export const CreateConversation = ({
 
 			onCreated(
 				newNode,
-				resData.messages.map((msg: ChatMessage) => ({
+				resData.messages.map((msg: any) => ({
 					content: msg.content,
 					created_at: msg.created_at,
 					role: msg.role,
-					_id: msg.id || msg._id || ''
+					_id: msg.id || msg._id || '',
+					parent_id: msg.parent_id || null
 				}))
 			);
 			onClose();

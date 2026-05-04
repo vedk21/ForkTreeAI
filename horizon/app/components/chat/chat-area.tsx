@@ -63,6 +63,7 @@ export interface ChatMessage {
 	role: 'user' | 'model';
 	content: string;
 	created_at: string | Date;
+	parent_id?: string | null;
 }
 
 interface ChatAreaProps {
@@ -344,17 +345,14 @@ export const ChatArea = ({
 														size="sm"
 														className="h-6 py-4 px-2 text-sm font-medium ml-2 text-primary hover:text-primary hover:bg-primary/30 rounded-md"
 														onClick={() => {
-															const msgIndex = messages.findIndex(
-																(m) => m._id === msg._id
-															);
-															const parentId =
-																msgIndex > 0
-																	? messages[msgIndex + 1]._id
-																	: null;
 															const isLast =
 																userMessages[userMessages.length - 1]._id ===
 																msg._id;
-															onForkMessage?.(parentId, isLast, selectedModel);
+															onForkMessage?.(
+																msg.parent_id || null,
+																isLast,
+																selectedModel
+															);
 														}}
 													>
 														<GitBranch className="h-3 w-3 mr-1" />

@@ -7,6 +7,8 @@ export interface ChatTreeItem extends TreeDataItem {
 }
 
 export interface TreeViewNode {
+	id?: string;
+	_id?: string;
 	branch_id: string;
 	name_of_branch: string;
 	created_at: string;

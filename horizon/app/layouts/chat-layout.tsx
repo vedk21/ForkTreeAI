@@ -106,11 +106,12 @@ export const ChatLayout = () => {
 				);
 				const data = (await res.json()) as Message[];
 				// Remap "id" to "_id" since your ChatArea UI expects `_id` based on the interface
-				const formattedMsgs: ChatMessage[] = data.map((msg) => ({
+				const formattedMsgs: ChatMessage[] = data.map((msg: any) => ({
 					content: msg.content,
 					created_at: msg.created_at,
 					role: msg.role,
-					_id: msg.id || msg._id || ''
+					_id: msg.id || msg._id || '',
+					parent_id: msg.parent_id || null
 				}));
 				messagesCache.current[branchId] = formattedMsgs;
 				return formattedMsgs;
@@ -179,7 +180,8 @@ export const ChatLayout = () => {
 			_id: 'temp-' + Date.now(),
 			role: 'user',
 			content,
-			created_at: new Date().toISOString()
+			created_at: new Date().toISOString(),
+			parent_id: parentId
 		};
 
 		setTargetMessages((prev) => [...prev, optimisticUserMsg]);
@@ -205,14 +207,13 @@ export const ChatLayout = () => {
 
 			const resData = await res.json();
 			const newMessages = resData.messages as Message[];
-			const formattedNewMsgs: ChatMessage[] = newMessages.map(
-				(msg: Message) => ({
-					content: msg.content,
-					created_at: msg.created_at,
-					role: msg.role,
-					_id: msg.id || msg._id || ''
-				})
-			);
+			const formattedNewMsgs: ChatMessage[] = newMessages.map((msg: any) => ({
+				content: msg.content,
+				created_at: msg.created_at,
+				role: msg.role,
+				_id: msg.id || msg._id || '',
+				parent_id: msg.parent_id || null
+			}));
 
 			// Replace the optimistic user message and append the actual AI response
 			setTargetMessages((prev) => {
@@ -362,14 +363,13 @@ export const ChatLayout = () => {
 				onClose={() => setIsCreateModalOpen(false)}
 				onCreated={(newItem, newMessages) => {
 					// Pre-populate the cache with the received messages so we don't fetch them again
-					const formattedMsgs: ChatMessage[] = newMessages.map(
-						(msg: ChatMessage) => ({
-							content: msg.content,
-							created_at: msg.created_at,
-							role: msg.role,
-							_id: msg._id || ''
-						})
-					);
+					const formattedMsgs: ChatMessage[] = newMessages.map((msg: any) => ({
+						content: msg.content,
+						created_at: msg.created_at,
+						role: msg.role,
+						_id: msg.id || msg._id || '',
+						parent_id: msg.parent_id || null
+					}));
 					messagesCache.current[newItem.id] = formattedMsgs;
 
 					setTreeData((prev) => [...prev, newItem]);
@@ -381,7 +381,7 @@ export const ChatLayout = () => {
 			<CreateBranch
 				open={branchModalData?.isOpen || false}
 				onClose={() => setBranchModalData(null)}
-				onCreated={(rawTreeData) => {
+				onCreated={(rawTreeData, newMessages, newBranchName, ogTrailName) => {
 					const updatedSubTree = mapNode(rawTreeData as TreeViewNode);
 					setTreeData((prev) => {
 						const updateTree = (nodes: ChatTreeItem[]): ChatTreeItem[] => {
@@ -397,6 +397,78 @@ export const ChatLayout = () => {
 						};
 						return updateTree(prev);
 					});
+
+					// 1. Find the newly created branch ID & Old Trail ID dynamically
+					let newBranchId: string | undefined = undefined;
+					let oldTrailId: string | undefined = undefined;
+					let latestTimeNew = 0;
+					let latestTimeOld = 0;
+
+					const actualOgTrailName =
+						ogTrailName || `${branchModalData?.chat.name} (Original Trail)`;
+
+					const findBranches = (node: TreeViewNode) => {
+						if (node.name_of_branch === newBranchName) {
+							const nodeTime = new Date(node.created_at || 0).getTime();
+							if (nodeTime > latestTimeNew) {
+								latestTimeNew = nodeTime;
+								newBranchId = node.branch_id || node.id;
+							}
+						}
+						if (node.name_of_branch === actualOgTrailName) {
+							const nodeTime = new Date(node.created_at || 0).getTime();
+							if (nodeTime > latestTimeOld) {
+								latestTimeOld = nodeTime;
+								oldTrailId = node.branch_id || node.id;
+							}
+						}
+						if (node.children) node.children.forEach(findBranches);
+					};
+					findBranches(rawTreeData as TreeViewNode);
+
+					// 2. Pre-populate cache to prevent refetching new branch messages
+					const sourceBranchId = branchModalData?.chat.id;
+
+					if (newBranchId && sourceBranchId) {
+						const formattedNewMsgs: ChatMessage[] = (newMessages as any[]).map(
+							(msg: any) => ({
+								content: msg.content,
+								created_at: msg.created_at,
+								role: msg.role,
+								_id: msg.id || msg._id || '',
+								parent_id: msg.parent_id || null
+							})
+						);
+
+						messagesCache.current[newBranchId] = formattedNewMsgs;
+					}
+
+					// 3. Partition source branch cache if we forked from the middle
+					if (sourceBranchId) {
+						const sourceMsgs = messagesCache.current[sourceBranchId] || [];
+						let forkIndex = -1;
+
+						if (branchModalData?.parentId) {
+							forkIndex = sourceMsgs.findIndex(
+								(m) => m._id === branchModalData.parentId
+							);
+						}
+
+						// The parent keeps everything up to the fork point, the trail gets the rest
+						const parentKeeps = sourceMsgs.slice(0, forkIndex + 1);
+						const trailGets = sourceMsgs.slice(forkIndex + 1);
+
+						messagesCache.current[sourceBranchId] = parentKeeps;
+
+						if (oldTrailId && trailGets.length > 0) {
+							messagesCache.current[oldTrailId] = trailGets;
+						}
+					}
+
+					// 4. Navigate to the new branch
+					if (newBranchId) {
+						setSelectedId(newBranchId);
+					}
 				}}
 				conversationId={branchModalData?.chat.conversation_id || ''}
 				currentBranchId={branchModalData?.chat.id || ''}
