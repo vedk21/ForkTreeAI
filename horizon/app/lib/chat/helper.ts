@@ -22,6 +22,7 @@ export interface Message {
 	role: 'user' | 'model';
 	content: string;
 	created_at: string | Date;
+	parent_id?: string;
 }
 
 // Helper function to find a chat and its immediate parent

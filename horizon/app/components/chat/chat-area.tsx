@@ -343,7 +343,7 @@ export const ChatArea = ({
 													<Button
 														variant="ghost"
 														size="sm"
-														className="h-6 py-4 px-2 text-sm font-medium ml-2 text-primary hover:text-primary hover:bg-primary/30 rounded-md"
+														className="h-6 py-4 px-2 text-sm font-medium mx-2 text-primary hover:text-primary hover:bg-primary/30 rounded-md"
 														onClick={() => {
 															const isLast =
 																userMessages[userMessages.length - 1]._id ===

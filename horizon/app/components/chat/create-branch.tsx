@@ -81,6 +81,7 @@ export const CreateBranch = ({
 				parent_id: parentId,
 				current_branch_id: currentBranchId,
 				force_new_branch: true,
+				is_last: isLast,
 				new_branch_name: formData.newBranchName,
 				metadata: { model }
 			};
@@ -105,7 +106,7 @@ export const CreateBranch = ({
 				resData.tree,
 				resData.messages,
 				formData.newBranchName,
-				formData.ogTrailName
+				!isLast ? formData.ogTrailName : undefined
 			);
 			onClose();
 		} catch (error) {

@@ -71,7 +71,7 @@ async def process_new_message(conv_id: str, request: MessageRequest) -> TreeMess
 
     return TreeMessageResponse(
         messages=[MessageResponse(**user_msg_doc), MessageResponse(**ai_msg_doc)],
-        tree=updated_branch_tree,
+        tree=cast(TreeViewResponse, updated_branch_tree),
     )
 
 
@@ -214,7 +214,7 @@ async def get_tree_view() -> list[TreeViewResponse]:
             # If it has no parent, it's the root of a conversation
             root_branches.append(branch_map[b_id])
 
-    return root_branches
+    return [TreeViewResponse(**branch) for branch in root_branches]
 
 
 async def get_messages_for_branch(conv_id: str, branch_id: str) -> list[MessageResponse]:

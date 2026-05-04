@@ -53,6 +53,25 @@ export const ChatLayout = () => {
 		children: node.children ? node.children.map(mapNode) : []
 	});
 
+	// Helper to find the correct AI response ID to stem the new branch from
+	const resolveForkParent = (
+		messages: ChatMessage[],
+		clickedParentId: string | null
+	) => {
+		const userMsg = messages.find(
+			(m) => m.parent_id === clickedParentId && m.role === 'user'
+		);
+		if (userMsg) {
+			const aiResponse = messages.find(
+				(m) => m.parent_id === userMsg._id && m.role === 'model'
+			);
+			if (aiResponse) {
+				return aiResponse._id;
+			}
+		}
+		return clickedParentId;
+	};
+
 	// 1.5 Fetch Tree View Data
 	useEffect(() => {
 		const fetchTree = async () => {
@@ -106,13 +125,15 @@ export const ChatLayout = () => {
 				);
 				const data = (await res.json()) as Message[];
 				// Remap "id" to "_id" since your ChatArea UI expects `_id` based on the interface
-				const formattedMsgs: ChatMessage[] = data.map((msg: any) => ({
-					content: msg.content,
-					created_at: msg.created_at,
-					role: msg.role,
-					_id: msg.id || msg._id || '',
-					parent_id: msg.parent_id || null
-				}));
+				const formattedMsgs: ChatMessage[] = data.map(
+					(msg: Message & { _id?: string }) => ({
+						content: msg.content,
+						created_at: msg.created_at,
+						role: msg.role,
+						_id: msg.id || msg._id || '',
+						parent_id: msg.parent_id || null
+					})
+				);
 				messagesCache.current[branchId] = formattedMsgs;
 				return formattedMsgs;
 			} catch (error) {
@@ -207,13 +228,15 @@ export const ChatLayout = () => {
 
 			const resData = await res.json();
 			const newMessages = resData.messages as Message[];
-			const formattedNewMsgs: ChatMessage[] = newMessages.map((msg: any) => ({
-				content: msg.content,
-				created_at: msg.created_at,
-				role: msg.role,
-				_id: msg.id || msg._id || '',
-				parent_id: msg.parent_id || null
-			}));
+			const formattedNewMsgs: ChatMessage[] = newMessages.map(
+				(msg: Message & { _id?: string }) => ({
+					content: msg.content,
+					created_at: msg.created_at,
+					role: msg.role,
+					_id: msg.id || msg._id || '',
+					parent_id: msg.parent_id || null
+				})
+			);
 
 			// Replace the optimistic user message and append the actual AI response
 			setTargetMessages((prev) => {
@@ -290,7 +313,7 @@ export const ChatLayout = () => {
 											setBranchModalData({
 												isOpen: true,
 												chat: parentChat,
-												parentId,
+												parentId: resolveForkParent(parentMessages, parentId),
 												isLast,
 												model
 											});
@@ -322,7 +345,7 @@ export const ChatLayout = () => {
 											setBranchModalData({
 												isOpen: true,
 												chat: currentChat,
-												parentId,
+												parentId: resolveForkParent(currentMessages, parentId),
 												isLast,
 												model
 											});
@@ -347,7 +370,7 @@ export const ChatLayout = () => {
 									setBranchModalData({
 										isOpen: true,
 										chat: currentChat,
-										parentId,
+										parentId: resolveForkParent(currentMessages, parentId),
 										isLast,
 										model
 									});
@@ -363,13 +386,15 @@ export const ChatLayout = () => {
 				onClose={() => setIsCreateModalOpen(false)}
 				onCreated={(newItem, newMessages) => {
 					// Pre-populate the cache with the received messages so we don't fetch them again
-					const formattedMsgs: ChatMessage[] = newMessages.map((msg: any) => ({
-						content: msg.content,
-						created_at: msg.created_at,
-						role: msg.role,
-						_id: msg.id || msg._id || '',
-						parent_id: msg.parent_id || null
-					}));
+					const formattedMsgs: ChatMessage[] = (newMessages as Message[]).map(
+						(msg: Message & { _id?: string }) => ({
+							content: msg.content,
+							created_at: msg.created_at,
+							role: msg.role,
+							_id: msg.id || msg._id || '',
+							parent_id: msg.parent_id || null
+						})
+					);
 					messagesCache.current[newItem.id] = formattedMsgs;
 
 					setTreeData((prev) => [...prev, newItem]);
@@ -430,15 +455,15 @@ export const ChatLayout = () => {
 					const sourceBranchId = branchModalData?.chat.id;
 
 					if (newBranchId && sourceBranchId) {
-						const formattedNewMsgs: ChatMessage[] = (newMessages as any[]).map(
-							(msg: any) => ({
-								content: msg.content,
-								created_at: msg.created_at,
-								role: msg.role,
-								_id: msg.id || msg._id || '',
-								parent_id: msg.parent_id || null
-							})
-						);
+						const formattedNewMsgs: ChatMessage[] = (
+							newMessages as unknown as Message[]
+						).map((msg: Message & { _id?: string }) => ({
+							content: msg.content,
+							created_at: msg.created_at,
+							role: msg.role,
+							_id: msg.id || msg._id || '',
+							parent_id: msg.parent_id || null
+						}));
 
 						messagesCache.current[newBranchId] = formattedNewMsgs;
 					}
