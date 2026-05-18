@@ -22,6 +22,11 @@ interface CreateBranchProps {
 	model: string;
 }
 
+const API_BASE_URL =
+	typeof window !== 'undefined'
+		? `${window.location.protocol}//${window.location.hostname}:3001`
+		: 'http://localhost:3001';
+
 export const CreateBranch = ({
 	open,
 	onClose,
@@ -104,7 +109,7 @@ export const CreateBranch = ({
 			}
 
 			const res = await fetch(
-				`http://localhost:3001/conversations/${conversationId}/messages`,
+				`${API_BASE_URL}/conversations/${conversationId}/messages`,
 				{
 					method: 'POST',
 					headers: { 'Content-Type': 'application/json' },

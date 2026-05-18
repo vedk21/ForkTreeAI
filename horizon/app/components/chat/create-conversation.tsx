@@ -14,6 +14,11 @@ interface CreateConversationProps {
 	onCreatingChange: (isCreating: boolean) => void;
 }
 
+const API_BASE_URL =
+	typeof window !== 'undefined'
+		? `${window.location.protocol}//${window.location.hostname}:3001`
+		: 'http://localhost:3001';
+
 export const CreateConversation = ({
 	open,
 	onClose,
@@ -70,7 +75,7 @@ export const CreateConversation = ({
 		setIsCreating(true);
 		onCreatingChange(true);
 		try {
-			const res = await fetch('http://localhost:3001/conversations', {
+			const res = await fetch(`${API_BASE_URL}/conversations`, {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({

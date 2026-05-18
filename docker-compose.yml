@@ -3,7 +3,8 @@ services:
     image: mongo:latest
     container_name: forktree_mongodb
     ports:
-      - "27017:27017"
+      # Host port 27018 mapped to internal container port 27017
+      - "27018:27017"
     volumes:
       - mongodb_data:/data/db
     restart: unless-stopped
@@ -19,7 +20,7 @@ services:
     environment:
       # Ensure the MongoDB URL matches the variable defined in app.core.config.settings
       - MONGO_URI=mongodb://mongodb:27017
-      - MONGODB_URL=mongodb://mongodb:27017
+      - MONGO_URL=mongodb://mongodb:27017/forkTreeAI
       - GEMINI_API_KEY=${GEMINI_API_KEY}
       - USE_MOCK_AI=${USE_MOCK_AI:-false}
       - AI_MODEL_NAME=${AI_MODEL_NAME:-gemini-2.5-flash}

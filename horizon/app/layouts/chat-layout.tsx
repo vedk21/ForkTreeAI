@@ -17,6 +17,12 @@ import {
 	type TreeViewNode
 } from '@/lib/chat/helper';
 
+// Safely resolves the API URL to the host IP dynamically (supports SSR)
+const API_BASE_URL =
+	typeof window !== 'undefined'
+		? `${window.location.protocol}//${window.location.hostname}:3001`
+		: 'http://localhost:3001';
+
 export const ChatLayout = () => {
 	// 1. Manage state here
 	const [selectedId, setSelectedId] = useState<string>('');
@@ -78,9 +84,7 @@ export const ChatLayout = () => {
 			setIsLoadingTree(true);
 			try {
 				// Replace the base URL with your actual API endpoint structure if needed
-				const res = await fetch(
-					'http://localhost:3001/conversations/tree-view'
-				);
+				const res = await fetch(`${API_BASE_URL}/conversations/tree-view`);
 				const data = await res.json();
 
 				const formattedData = data.map(mapNode);
@@ -145,7 +149,7 @@ export const ChatLayout = () => {
 			}
 			try {
 				const res = await fetch(
-					`http://localhost:3001/conversations/${convId}/branch-messages/${branchId}`
+					`${API_BASE_URL}/conversations/${convId}/branch-messages/${branchId}`
 				);
 				const data = (await res.json()) as Message[];
 				// Remap "id" to "_id" since your ChatArea UI expects `_id` based on the interface
@@ -234,7 +238,7 @@ export const ChatLayout = () => {
 
 		try {
 			const res = await fetch(
-				`http://localhost:3001/conversations/${chat.conversation_id}/messages`,
+				`${API_BASE_URL}/conversations/${chat.conversation_id}/messages`,
 				{
 					method: 'POST',
 					headers: { 'Content-Type': 'application/json' },
