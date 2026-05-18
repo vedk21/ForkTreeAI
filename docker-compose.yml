@@ -1,0 +1,42 @@
+services:
+  mongodb:
+    image: mongo:latest
+    container_name: forktree_mongodb
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+    restart: unless-stopped
+
+  oblivion:
+    build:
+      context: ./oblivion
+      dockerfile: Dockerfile
+    container_name: forktree_oblivion
+    ports:
+      # The frontend expects the backend on 3001, but the FastAPI app runs on 8001
+      - "3001:8001"
+    environment:
+      # Ensure the MongoDB URL matches the variable defined in app.core.config.settings
+      - MONGO_URI=mongodb://mongodb:27017
+      - MONGODB_URL=mongodb://mongodb:27017
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - USE_MOCK_AI=${USE_MOCK_AI:-false}
+      - AI_MODEL_NAME=${AI_MODEL_NAME:-gemini-2.5-flash}
+    depends_on:
+      - mongodb
+    restart: unless-stopped
+
+  horizon:
+    build:
+      context: ./horizon
+      dockerfile: Dockerfile
+    container_name: forktree_horizon
+    ports:
+      - "3000:3000"
+    depends_on:
+      - oblivion
+    restart: unless-stopped
+
+volumes:
+  mongodb_data:

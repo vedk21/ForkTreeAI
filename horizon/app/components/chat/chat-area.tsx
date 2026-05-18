@@ -248,7 +248,7 @@ export const ChatArea = ({
 														</DropdownMenuTrigger>
 														<DropdownMenuContent
 															align="start"
-															className="bg-popover text-popover-foreground border-border shadow-md max-w-[200px] sm:max-w-[300px]"
+															className="bg-popover text-popover-foreground border-border shadow-md max-w-50 sm:max-w-75"
 														>
 															{hiddenBreadcrumbs.map((hiddenCrumb) => (
 																<DropdownMenuItem
@@ -286,7 +286,7 @@ export const ChatArea = ({
 														}}
 													>
 														<span
-															className="truncate max-w-[90px] sm:max-w-[150px] hover:text-foreground transition-colors"
+															className="truncate max-w-22.5 sm:max-w-37.5 hover:text-foreground transition-colors"
 															title={crumb.name}
 														>
 															{crumb.name}
